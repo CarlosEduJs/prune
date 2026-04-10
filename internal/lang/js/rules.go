@@ -206,6 +206,28 @@ func ruleDeadFeatureFlags(cfg *config.Config, data *Collected) []rules.Finding {
 			Reason:     "feature flag patterns never referenced",
 		})
 	}
+
+	for file, hits := range data.FeatureFlagHits {
+		for _, hit := range hits {
+			if data.FeatureFlagRefs[hit.Flag] > 0 {
+				continue
+			}
+			confidence := confidenceFor(cfg, "dead_feature_flag", "if_never_referenced", "safe")
+			line := hit.Line
+			if line == 0 {
+				line = 1
+			}
+			findings = append(findings, rules.Finding{
+				ID:         "dead_feature_flag:" + file + ":" + hit.Flag,
+				Kind:       "dead_feature_flag",
+				Confidence: confidence,
+				File:       file,
+				Line:       line,
+				Symbol:     hit.Flag,
+				Reason:     "feature flag never referenced",
+			})
+		}
+	}
 	return findings
 }
 

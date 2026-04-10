@@ -23,6 +23,7 @@ type Collector struct {
 	functionDecls     map[string][]string
 	variableDecls     map[string][]string
 	featureFlagRefs   map[string]int
+	featureFlagHits   map[string][]FlagOccurrence
 	dynamicIndicators map[string][]string
 	importRegexes     []*regexp.Regexp
 	requireRegexes    []*regexp.Regexp
@@ -42,6 +43,7 @@ func NewCollector(cfg *config.Config) *Collector {
 		functionDecls:     map[string][]string{},
 		variableDecls:     map[string][]string{},
 		featureFlagRefs:   map[string]int{},
+		featureFlagHits:   map[string][]FlagOccurrence{},
 		dynamicIndicators: map[string][]string{},
 		importRegexes: []*regexp.Regexp{
 			regexp.MustCompile(`(?m)^\s*import\s+[^;]*?from\s+["']([^"']+)["']`),
@@ -66,6 +68,7 @@ type Collected struct {
 	FunctionDecls     map[string][]string
 	VariableDecls     map[string][]string
 	FeatureFlagRefs   map[string]int
+	FeatureFlagHits   map[string][]FlagOccurrence
 	DynamicIndicators map[string][]string
 }
 
@@ -105,7 +108,7 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		c.usageCounts[entry.Rel] = map[string]int{}
 		c.functionDecls[entry.Rel] = extractFunctionDecls(content)
 		c.variableDecls[entry.Rel] = extractVariableDecls(content)
-		if ast, ok := collectASTData(entry.Rel, contentBytes); ok {
+		if ast, ok := collectASTData(entry.Rel, contentBytes, c.cfg.FeatureFlags.Patterns); ok {
 			c.identifiers[entry.Rel] = ast.Identifiers
 			c.usageCounts[entry.Rel] = ast.UsageCounts
 			c.functionDecls[entry.Rel] = ast.FunctionDecls
@@ -115,12 +118,19 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 			c.exports[entry.Rel] = uniqueStrings(c.exports[entry.Rel])
 			c.importsResolved[entry.Rel] = resolveLocalImports(entry.Rel, c.importSpecs[entry.Rel], fileIndex)
 			c.exportSymbols[entry.Rel] = ast.ExportSymbols
+			c.featureFlagHits[entry.Rel] = mergeFlagHits(c.featureFlagHits[entry.Rel], ast.FlagHits)
 		}
 		c.dynamicIndicators[entry.Rel] = detectDynamic(content, c.cfg)
 
 		for _, re := range flagRegexes {
 			for _, match := range re.FindAllString(content, -1) {
 				c.featureFlagRefs[match]++
+				if !flagHitExists(c.featureFlagHits[entry.Rel], match) {
+					c.featureFlagHits[entry.Rel] = append(c.featureFlagHits[entry.Rel], FlagOccurrence{
+						Flag: match,
+						Line: 0,
+					})
+				}
 			}
 		}
 	}
@@ -137,6 +147,7 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		FunctionDecls:     c.functionDecls,
 		VariableDecls:     c.variableDecls,
 		FeatureFlagRefs:   c.featureFlagRefs,
+		FeatureFlagHits:   c.featureFlagHits,
 		DynamicIndicators: c.dynamicIndicators,
 	}, nil
 }
@@ -257,6 +268,11 @@ type ImportSpec struct {
 
 type ExportSymbol struct {
 	Name string
+	Line int
+}
+
+type FlagOccurrence struct {
+	Flag string
 	Line int
 }
 
@@ -441,6 +457,30 @@ func uniqueStrings(values []string) []string {
 		unique = append(unique, value)
 	}
 	return unique
+}
+
+func flagHitExists(hits []FlagOccurrence, flag string) bool {
+	for _, hit := range hits {
+		if hit.Flag == flag {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeFlagHits(base []FlagOccurrence, hits []FlagOccurrence) []FlagOccurrence {
+	combined := make([]FlagOccurrence, 0, len(base)+len(hits))
+	combined = append(combined, base...)
+	for _, hit := range hits {
+		if hit.Flag == "" {
+			continue
+		}
+		if flagHitExists(combined, hit.Flag) {
+			continue
+		}
+		combined = append(combined, hit)
+	}
+	return combined
 }
 
 func resolveFile(path string, index map[string]scan.FileEntry) (string, bool) {

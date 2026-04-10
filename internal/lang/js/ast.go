@@ -2,6 +2,7 @@ package js
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -17,9 +18,10 @@ type astResult struct {
 	VariableDecls []string
 	ImportSpecs   []ImportSpec
 	ExportSymbols []ExportSymbol
+	FlagHits      []FlagOccurrence
 }
 
-func collectASTData(path string, content []byte) (*astResult, bool) {
+func collectASTData(path string, content []byte, flagPatterns []string) (*astResult, bool) {
 	lang := languageForPath(path)
 	if lang == nil {
 		return nil, false
@@ -45,6 +47,7 @@ func collectASTData(path string, content []byte) (*astResult, bool) {
 		VariableDecls: []string{},
 		ImportSpecs:   []ImportSpec{},
 		ExportSymbols: []ExportSymbol{},
+		FlagHits:      []FlagOccurrence{},
 	}
 
 	collectIdentifiers(root, content, result)
@@ -53,6 +56,7 @@ func collectASTData(path string, content []byte) (*astResult, bool) {
 	collectVariableDecls(root, content, result)
 	collectImportSpecs(root, content, result)
 	collectExportSymbols(root, content, result)
+	collectFlagHits(root, content, result, flagPatterns)
 
 	return result, true
 }
@@ -584,6 +588,64 @@ func findDescendant(node *sitter.Node, nodeType string) *sitter.Node {
 
 func trimQuotes(value string) string {
 	return strings.Trim(value, "\"'`")
+}
+
+func collectFlagHits(root *sitter.Node, content []byte, result *astResult, flagPatterns []string) {
+	regexes := compileRegexes(flagPatterns)
+	cursor := sitter.NewTreeCursor(root)
+	defer cursor.Close()
+
+	for {
+		node := cursor.CurrentNode()
+		if node.Type() == "member_expression" || node.Type() == "subscript_expression" {
+			if hit := parseFlagHit(node, content, regexes); hit != nil {
+				result.FlagHits = append(result.FlagHits, *hit)
+			}
+		}
+
+		if cursor.GoToFirstChild() {
+			continue
+		}
+		for !cursor.GoToNextSibling() {
+			if !cursor.GoToParent() {
+				return
+			}
+		}
+	}
+}
+
+func parseFlagHit(node *sitter.Node, content []byte, regexes []*regexp.Regexp) *FlagOccurrence {
+	if node == nil {
+		return nil
+	}
+	objectNode := node.ChildByFieldName("object")
+	propertyNode := node.ChildByFieldName("property")
+	if objectNode == nil || propertyNode == nil {
+		return nil
+	}
+
+	objectName := nodeContent(objectNode, content)
+	propertyName := nodeContent(propertyNode, content)
+	if objectName == "" || propertyName == "" {
+		return nil
+	}
+	flag := objectName + "." + propertyName
+	if len(regexes) > 0 {
+		matched := false
+		for _, re := range regexes {
+			if re.MatchString(flag) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return nil
+		}
+	}
+	return &FlagOccurrence{
+		Flag: flag,
+		Line: int(node.StartPoint().Row) + 1,
+	}
 }
 
 func nodeContent(node *sitter.Node, content []byte) string {
