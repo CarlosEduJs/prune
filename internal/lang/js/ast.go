@@ -6,6 +6,8 @@ import (
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
+	"github.com/smacker/go-tree-sitter/typescript/tsx"
+	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
 type astResult struct {
@@ -15,12 +17,13 @@ type astResult struct {
 }
 
 func collectASTData(path string, content []byte) (*astResult, bool) {
-	if !shouldUseJSAST(path) {
+	lang := languageForPath(path)
+	if lang == nil {
 		return nil, false
 	}
 
 	parser := sitter.NewParser()
-	parser.SetLanguage(javascript.GetLanguage())
+	parser.SetLanguage(lang)
 	defer parser.Close()
 
 	tree, err := parser.ParseCtx(nil, nil, content)
@@ -48,6 +51,20 @@ func collectASTData(path string, content []byte) (*astResult, bool) {
 func shouldUseJSAST(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".js" || ext == ".jsx"
+}
+
+func languageForPath(path string) *sitter.Language {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".js", ".jsx":
+		return javascript.GetLanguage()
+	case ".ts":
+		return typescript.GetLanguage()
+	case ".tsx":
+		return tsx.GetLanguage()
+	default:
+		return nil
+	}
 }
 
 func collectIdentifiers(root *sitter.Node, content []byte, result *astResult) {
