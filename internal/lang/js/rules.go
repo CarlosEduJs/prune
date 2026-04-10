@@ -133,7 +133,11 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 			continue
 		}
 		counts := data.Identifiers[file]
+		usage := data.UsageCounts[file]
 		for _, symbol := range symbols {
+			if usage[symbol] > 0 {
+				continue
+			}
 			if counts[symbol] > 1 {
 				continue
 			}
@@ -158,7 +162,11 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 			continue
 		}
 		counts := data.Identifiers[file]
+		usage := data.UsageCounts[file]
 		for _, symbol := range symbols {
+			if usage[symbol] > 0 {
+				continue
+			}
 			if counts[symbol] > 1 {
 				continue
 			}

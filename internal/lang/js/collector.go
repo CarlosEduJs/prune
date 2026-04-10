@@ -19,6 +19,7 @@ type Collector struct {
 	exports           map[string][]string
 	exportSymbols     map[string][]ExportSymbol
 	identifiers       map[string]map[string]int
+	usageCounts       map[string]map[string]int
 	functionDecls     map[string][]string
 	variableDecls     map[string][]string
 	featureFlagRefs   map[string]int
@@ -37,6 +38,7 @@ func NewCollector(cfg *config.Config) *Collector {
 		exports:           map[string][]string{},
 		exportSymbols:     map[string][]ExportSymbol{},
 		identifiers:       map[string]map[string]int{},
+		usageCounts:       map[string]map[string]int{},
 		functionDecls:     map[string][]string{},
 		variableDecls:     map[string][]string{},
 		featureFlagRefs:   map[string]int{},
@@ -60,6 +62,7 @@ type Collected struct {
 	Exports           map[string][]string
 	ExportSymbols     map[string][]ExportSymbol
 	Identifiers       map[string]map[string]int
+	UsageCounts       map[string]map[string]int
 	FunctionDecls     map[string][]string
 	VariableDecls     map[string][]string
 	FeatureFlagRefs   map[string]int
@@ -99,10 +102,12 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		c.importsResolved[entry.Rel] = resolveLocalImports(entry.Rel, importSpecs, fileIndex)
 		c.exports[entry.Rel] = extractExports(content)
 		c.identifiers[entry.Rel] = countIdentifiers(content)
+		c.usageCounts[entry.Rel] = map[string]int{}
 		c.functionDecls[entry.Rel] = extractFunctionDecls(content)
 		c.variableDecls[entry.Rel] = extractVariableDecls(content)
 		if ast, ok := collectASTData(entry.Rel, contentBytes); ok {
 			c.identifiers[entry.Rel] = ast.Identifiers
+			c.usageCounts[entry.Rel] = ast.UsageCounts
 			c.functionDecls[entry.Rel] = ast.FunctionDecls
 			c.variableDecls[entry.Rel] = ast.VariableDecls
 			c.importSpecs[entry.Rel] = mergeImportSpecs(importSpecs, ast.ImportSpecs)
@@ -128,6 +133,7 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		Exports:           c.exports,
 		ExportSymbols:     c.exportSymbols,
 		Identifiers:       c.identifiers,
+		UsageCounts:       c.usageCounts,
 		FunctionDecls:     c.functionDecls,
 		VariableDecls:     c.variableDecls,
 		FeatureFlagRefs:   c.featureFlagRefs,

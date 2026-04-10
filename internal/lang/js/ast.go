@@ -12,6 +12,7 @@ import (
 
 type astResult struct {
 	Identifiers   map[string]int
+	UsageCounts   map[string]int
 	FunctionDecls []string
 	VariableDecls []string
 	ImportSpecs   []ImportSpec
@@ -39,6 +40,7 @@ func collectASTData(path string, content []byte) (*astResult, bool) {
 
 	result := &astResult{
 		Identifiers:   map[string]int{},
+		UsageCounts:   map[string]int{},
 		FunctionDecls: []string{},
 		VariableDecls: []string{},
 		ImportSpecs:   []ImportSpec{},
@@ -46,6 +48,7 @@ func collectASTData(path string, content []byte) (*astResult, bool) {
 	}
 
 	collectIdentifiers(root, content, result)
+	collectUsageCounts(root, content, result)
 	collectFunctionDecls(root, content, result)
 	collectVariableDecls(root, content, result)
 	collectImportSpecs(root, content, result)
@@ -95,6 +98,61 @@ func collectIdentifiers(root *sitter.Node, content []byte, result *astResult) {
 			}
 		}
 	}
+}
+
+func collectUsageCounts(root *sitter.Node, content []byte, result *astResult) {
+	cursor := sitter.NewTreeCursor(root)
+	defer cursor.Close()
+
+	for {
+		node := cursor.CurrentNode()
+		if node.Type() == "identifier" {
+			if isDeclarationIdentifier(node) {
+				if cursor.GoToFirstChild() {
+					continue
+				}
+			} else {
+				name := nodeContent(node, content)
+				if name != "" {
+					result.UsageCounts[name]++
+				}
+			}
+		}
+
+		if cursor.GoToFirstChild() {
+			continue
+		}
+		for !cursor.GoToNextSibling() {
+			if !cursor.GoToParent() {
+				return
+			}
+		}
+	}
+}
+
+func isDeclarationIdentifier(node *sitter.Node) bool {
+	if node == nil {
+		return false
+	}
+	parent := node.Parent()
+	if parent == nil {
+		return false
+	}
+	if parent.Type() == "function_declaration" || parent.Type() == "class_declaration" {
+		nameNode := parent.ChildByFieldName("name")
+		return nameNode != nil && nameNode.ID() == node.ID()
+	}
+	if parent.Type() == "variable_declarator" {
+		nameNode := parent.ChildByFieldName("name")
+		return nameNode != nil && nameNode.ID() == node.ID()
+	}
+	if parent.Type() == "import_specifier" || parent.Type() == "namespace_import" || parent.Type() == "import_clause" {
+		return true
+	}
+	if parent.Type() == "shorthand_property_identifier_pattern" || parent.Type() == "pair_pattern" {
+		return true
+	}
+	return false
 }
 
 func collectFunctionDecls(root *sitter.Node, content []byte, result *astResult) {
