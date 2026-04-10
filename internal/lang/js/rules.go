@@ -74,10 +74,7 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 			if !strings.HasPrefix(spec.Source, ".") {
 				continue
 			}
-			resolved := spec.Resolved
-			if resolved == "" {
-				resolved = resolveImportedFile(file, spec.Source, data.Files)
-			}
+			resolved := resolveImportTarget(file, spec, data.Files)
 			if resolved == "" {
 				continue
 			}
@@ -315,4 +312,11 @@ func resolveImportedFile(from string, source string, files []scan.FileEntry) str
 		}
 	}
 	return ""
+}
+
+func resolveImportTarget(from string, spec ImportSpec, files []scan.FileEntry) string {
+	if spec.Resolved != "" {
+		return spec.Resolved
+	}
+	return resolveImportedFile(from, spec.Source, files)
 }

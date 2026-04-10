@@ -85,6 +85,9 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		rawImports := c.extractImports(content)
 		importSpecs := c.parseImportSpecs(content)
 		for i := range importSpecs {
+			if importSpecs[i].SideEffect {
+				continue
+			}
 			importSpecs[i].Resolved = resolveImportSpec(entry.Rel, importSpecs[i], fileIndex)
 		}
 		c.imports[entry.Rel] = rawImports
