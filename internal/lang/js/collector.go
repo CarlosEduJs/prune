@@ -22,6 +22,8 @@ type Collector struct {
 	usageCounts       map[string]map[string]int
 	functionDecls     map[string][]string
 	variableDecls     map[string][]string
+	functionLines     map[string]map[string]int
+	variableLines     map[string]map[string]int
 	featureFlagRefs   map[string]int
 	featureFlagHits   map[string][]FlagOccurrence
 	dynamicIndicators map[string][]string
@@ -42,6 +44,8 @@ func NewCollector(cfg *config.Config) *Collector {
 		usageCounts:       map[string]map[string]int{},
 		functionDecls:     map[string][]string{},
 		variableDecls:     map[string][]string{},
+		functionLines:     map[string]map[string]int{},
+		variableLines:     map[string]map[string]int{},
 		featureFlagRefs:   map[string]int{},
 		featureFlagHits:   map[string][]FlagOccurrence{},
 		dynamicIndicators: map[string][]string{},
@@ -67,6 +71,8 @@ type Collected struct {
 	UsageCounts       map[string]map[string]int
 	FunctionDecls     map[string][]string
 	VariableDecls     map[string][]string
+	FunctionLines     map[string]map[string]int
+	VariableLines     map[string]map[string]int
 	FeatureFlagRefs   map[string]int
 	FeatureFlagHits   map[string][]FlagOccurrence
 	DynamicIndicators map[string][]string
@@ -108,11 +114,15 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		c.usageCounts[entry.Rel] = map[string]int{}
 		c.functionDecls[entry.Rel] = extractFunctionDecls(content)
 		c.variableDecls[entry.Rel] = extractVariableDecls(content)
+		c.functionLines[entry.Rel] = map[string]int{}
+		c.variableLines[entry.Rel] = map[string]int{}
 		if ast, ok := collectASTData(entry.Rel, contentBytes, c.cfg.FeatureFlags.Patterns); ok {
 			c.identifiers[entry.Rel] = ast.Identifiers
 			c.usageCounts[entry.Rel] = ast.UsageCounts
 			c.functionDecls[entry.Rel] = ast.FunctionDecls
 			c.variableDecls[entry.Rel] = ast.VariableDecls
+			c.functionLines[entry.Rel] = ast.FunctionLines
+			c.variableLines[entry.Rel] = ast.VariableLines
 			c.importSpecs[entry.Rel] = mergeImportSpecs(importSpecs, ast.ImportSpecs)
 			c.exports[entry.Rel] = mergeExportNames(c.exports[entry.Rel], ast.ExportSymbols)
 			c.exports[entry.Rel] = uniqueStrings(c.exports[entry.Rel])
@@ -146,6 +156,8 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		UsageCounts:       c.usageCounts,
 		FunctionDecls:     c.functionDecls,
 		VariableDecls:     c.variableDecls,
+		FunctionLines:     c.functionLines,
+		VariableLines:     c.variableLines,
 		FeatureFlagRefs:   c.featureFlagRefs,
 		FeatureFlagHits:   c.featureFlagHits,
 		DynamicIndicators: c.dynamicIndicators,

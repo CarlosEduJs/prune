@@ -16,6 +16,8 @@ type astResult struct {
 	UsageCounts   map[string]int
 	FunctionDecls []string
 	VariableDecls []string
+	FunctionLines map[string]int
+	VariableLines map[string]int
 	ImportSpecs   []ImportSpec
 	ExportSymbols []ExportSymbol
 	FlagHits      []FlagOccurrence
@@ -45,6 +47,8 @@ func collectASTData(path string, content []byte, flagPatterns []string) (*astRes
 		UsageCounts:   map[string]int{},
 		FunctionDecls: []string{},
 		VariableDecls: []string{},
+		FunctionLines: map[string]int{},
+		VariableLines: map[string]int{},
 		ImportSpecs:   []ImportSpec{},
 		ExportSymbols: []ExportSymbol{},
 		FlagHits:      []FlagOccurrence{},
@@ -171,6 +175,9 @@ func collectFunctionDecls(root *sitter.Node, content []byte, result *astResult) 
 				name := nodeContent(nameNode, content)
 				if name != "" {
 					result.FunctionDecls = append(result.FunctionDecls, name)
+					if _, exists := result.FunctionLines[name]; !exists {
+						result.FunctionLines[name] = int(nameNode.StartPoint().Row) + 1
+					}
 				}
 			}
 		}
@@ -195,9 +202,13 @@ func collectVariableDecls(root *sitter.Node, content []byte, result *astResult) 
 		if node.Type() == "variable_declarator" {
 			nameNode := node.ChildByFieldName("name")
 			if nameNode != nil {
-				name := nodeContent(nameNode, content)
-				if name != "" {
-					result.VariableDecls = append(result.VariableDecls, name)
+				for _, name := range collectPatternNames(nameNode, content) {
+					if name != "" {
+						result.VariableDecls = append(result.VariableDecls, name)
+						if _, exists := result.VariableLines[name]; !exists {
+							result.VariableLines[name] = int(nameNode.StartPoint().Row) + 1
+						}
+					}
 				}
 			}
 		}

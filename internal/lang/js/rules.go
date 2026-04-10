@@ -139,6 +139,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 		}
 		counts := data.Identifiers[file]
 		usage := data.UsageCounts[file]
+		lines := data.FunctionLines[file]
 		for _, symbol := range symbols {
 			if usage[symbol] > 0 {
 				continue
@@ -150,12 +151,16 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 			if len(data.DynamicIndicators[file]) > 0 {
 				confidence = confidenceFor(cfg, "unused_function", "if_dynamic_usage", "review")
 			}
+			line := 1
+			if value, ok := lines[symbol]; ok && value > 0 {
+				line = value
+			}
 			findings = append(findings, rules.Finding{
 				ID:         "unused_function:" + file + ":" + symbol,
 				Kind:       "unused_function",
 				Confidence: confidence,
 				File:       file,
-				Line:       1,
+				Line:       line,
 				Symbol:     symbol,
 				Reason:     "function declared but never referenced",
 			})
@@ -168,6 +173,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 		}
 		counts := data.Identifiers[file]
 		usage := data.UsageCounts[file]
+		lines := data.VariableLines[file]
 		for _, symbol := range symbols {
 			if usage[symbol] > 0 {
 				continue
@@ -179,12 +185,16 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 			if len(data.DynamicIndicators[file]) > 0 {
 				confidence = confidenceFor(cfg, "unused_variable", "if_dynamic_usage", "review")
 			}
+			line := 1
+			if value, ok := lines[symbol]; ok && value > 0 {
+				line = value
+			}
 			findings = append(findings, rules.Finding{
 				ID:         "unused_variable:" + file + ":" + symbol,
 				Kind:       "unused_variable",
 				Confidence: confidence,
 				File:       file,
-				Line:       1,
+				Line:       line,
 				Symbol:     symbol,
 				Reason:     "variable declared but never referenced",
 			})
