@@ -81,6 +81,7 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		if err != nil {
 			return nil, err
 		}
+		contentBytes := []byte(content)
 
 		rawImports := c.extractImports(content)
 		importSpecs := c.parseImportSpecs(content)
@@ -97,6 +98,11 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		c.identifiers[entry.Rel] = countIdentifiers(content)
 		c.functionDecls[entry.Rel] = extractFunctionDecls(content)
 		c.variableDecls[entry.Rel] = extractVariableDecls(content)
+		if ast, ok := collectASTData(entry.Rel, contentBytes); ok {
+			c.identifiers[entry.Rel] = ast.Identifiers
+			c.functionDecls[entry.Rel] = ast.FunctionDecls
+			c.variableDecls[entry.Rel] = ast.VariableDecls
+		}
 		c.dynamicIndicators[entry.Rel] = detectDynamic(content, c.cfg)
 
 		for _, re := range flagRegexes {
