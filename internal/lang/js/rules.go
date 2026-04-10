@@ -88,6 +88,11 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 			for _, name := range spec.Names {
 				usedExports[resolved][name] = true
 			}
+			if spec.IsReexport {
+				if len(spec.Names) == 0 {
+					usedExports[resolved]["*"] = true
+				}
+			}
 		}
 	}
 	findings := []rules.Finding{}

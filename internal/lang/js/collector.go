@@ -264,6 +264,7 @@ type ImportSpec struct {
 	Names      []string
 	Wildcard   bool
 	SideEffect bool
+	IsReexport bool
 }
 
 type ExportSymbol struct {

@@ -253,10 +253,14 @@ func collectExportSymbols(root *sitter.Node, content []byte, result *astResult) 
 		node := cursor.CurrentNode()
 		switch node.Type() {
 		case "export_statement", "export_named_declaration":
-			result.ExportSymbols = append(result.ExportSymbols, parseExportStatement(node, content)...)
+			parsed := parseExportStatement(node, content)
+			result.ExportSymbols = append(result.ExportSymbols, parsed.Symbols...)
+			result.ImportSpecs = append(result.ImportSpecs, parsed.Reexports...)
 		case "export_clause":
 			if parent := node.Parent(); parent != nil && parent.Type() == "export_statement" {
-				result.ExportSymbols = append(result.ExportSymbols, parseExportStatement(parent, content)...)
+				parsed := parseExportStatement(parent, content)
+				result.ExportSymbols = append(result.ExportSymbols, parsed.Symbols...)
+				result.ImportSpecs = append(result.ImportSpecs, parsed.Reexports...)
 			}
 		case "export_default_declaration":
 			result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
@@ -416,12 +420,18 @@ func parseRequireStatement(node *sitter.Node, content []byte) *ImportSpec {
 	return nil
 }
 
-func parseExportStatement(node *sitter.Node, content []byte) []ExportSymbol {
+type exportParseResult struct {
+	Symbols   []ExportSymbol
+	Reexports []ImportSpec
+}
+
+func parseExportStatement(node *sitter.Node, content []byte) exportParseResult {
 	if node == nil {
-		return nil
+		return exportParseResult{}
 	}
 	line := int(node.StartPoint().Row) + 1
 	results := []ExportSymbol{}
+	reexports := []ImportSpec{}
 
 	decl := node.ChildByFieldName("declaration")
 	if decl != nil {
@@ -439,30 +449,65 @@ func parseExportStatement(node *sitter.Node, content []byte) []ExportSymbol {
 				results = append(results, ExportSymbol{Name: name, Line: line})
 			}
 		}
-		return results
+		return exportParseResult{Symbols: results}
 	}
 
 	clause := node.ChildByFieldName("clause")
 	if clause != nil && clause.Type() == "export_clause" {
-		for i := 0; i < int(clause.ChildCount()); i++ {
-			child := clause.Child(i)
-			if child == nil || child.Type() != "export_specifier" {
-				continue
-			}
-			nameNode := child.ChildByFieldName("name")
-			if nameNode == nil {
-				nameNode = child.ChildByFieldName("value")
-			}
-			if nameNode != nil {
-				name := nodeContent(nameNode, content)
-				if name != "" {
-					results = append(results, ExportSymbol{Name: name, Line: line})
-				}
+		exportedNames := parseExportSpecifiers(clause, content, true)
+		for _, name := range exportedNames {
+			if name != "" {
+				results = append(results, ExportSymbol{Name: name, Line: line})
 			}
 		}
 	}
 
-	return results
+	if sourceNode := node.ChildByFieldName("source"); sourceNode != nil {
+		source := trimQuotes(nodeContent(sourceNode, content))
+		if source != "" {
+			spec := ImportSpec{Source: source, Wildcard: true, IsReexport: true}
+			if clause == nil {
+				spec.Names = []string{"*"}
+			} else {
+				localNames := parseExportSpecifiers(clause, content, false)
+				spec.Names = localNames
+			}
+			reexports = append(reexports, spec)
+		}
+	}
+	return exportParseResult{Symbols: results, Reexports: reexports}
+}
+
+func parseExportSpecifiers(clause *sitter.Node, content []byte, exportedNames bool) []string {
+	if clause == nil {
+		return nil
+	}
+	names := []string{}
+	for i := 0; i < int(clause.ChildCount()); i++ {
+		child := clause.Child(i)
+		if child == nil || child.Type() != "export_specifier" {
+			continue
+		}
+		var nameNode *sitter.Node
+		if exportedNames {
+			nameNode = child.ChildByFieldName("name")
+			if nameNode == nil {
+				nameNode = child.ChildByFieldName("value")
+			}
+		} else {
+			nameNode = child.ChildByFieldName("value")
+			if nameNode == nil {
+				nameNode = child.ChildByFieldName("name")
+			}
+		}
+		if nameNode != nil {
+			name := nodeContent(nameNode, content)
+			if name != "" {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
 }
 
 func parseVarDeclarationNames(node *sitter.Node, content []byte) []string {
