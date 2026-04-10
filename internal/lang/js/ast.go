@@ -274,10 +274,25 @@ func collectExportSymbols(root *sitter.Node, content []byte, result *astResult) 
 				result.ImportSpecs = append(result.ImportSpecs, parsed.Reexports...)
 			}
 		case "export_default_declaration":
+			defaultLine := int(node.StartPoint().Row) + 1
 			result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
 				Name: "default",
-				Line: int(node.StartPoint().Row) + 1,
+				Line: defaultLine,
 			})
+			if decl := node.ChildByFieldName("declaration"); decl != nil {
+				if decl.Type() == "function_declaration" || decl.Type() == "class_declaration" {
+					nameNode := decl.ChildByFieldName("name")
+					if nameNode != nil {
+						name := nodeContent(nameNode, content)
+						if name != "" {
+							result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
+								Name: name,
+								Line: int(nameNode.StartPoint().Row) + 1,
+							})
+						}
+					}
+				}
+			}
 		}
 
 		if cursor.GoToFirstChild() {
