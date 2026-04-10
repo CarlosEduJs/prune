@@ -92,6 +92,7 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 	}
 	findings := []rules.Finding{}
 	for file, exports := range data.Exports {
+		lineMap := exportLineMap(data.ExportSymbols[file])
 		for _, symbol := range exports {
 			if usedExports[file] != nil {
 				if usedExports[file]["*"] || usedExports[file][symbol] {
@@ -102,12 +103,16 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 			if isEntrypoint(cfg, file) {
 				confidence = confidenceFor(cfg, "unused_export", "if_entrypoint", "review")
 			}
+			line := 1
+			if value, ok := lineMap[symbol]; ok {
+				line = value
+			}
 			findings = append(findings, rules.Finding{
 				ID:         "unused_export:" + file + ":" + symbol,
 				Kind:       "unused_export",
 				Confidence: confidence,
 				File:       file,
-				Line:       1,
+				Line:       line,
 				Symbol:     symbol,
 				Reason:     "exported symbol is never imported",
 			})
@@ -319,4 +324,17 @@ func resolveImportTarget(from string, spec ImportSpec, files []scan.FileEntry) s
 		return spec.Resolved
 	}
 	return resolveImportedFile(from, spec.Source, files)
+}
+
+func exportLineMap(symbols []ExportSymbol) map[string]int {
+	lineMap := map[string]int{}
+	for _, symbol := range symbols {
+		if symbol.Name == "" || symbol.Line <= 0 {
+			continue
+		}
+		if _, exists := lineMap[symbol.Name]; !exists {
+			lineMap[symbol.Name] = symbol.Line
+		}
+	}
+	return lineMap
 }

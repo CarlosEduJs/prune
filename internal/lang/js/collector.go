@@ -17,6 +17,7 @@ type Collector struct {
 	importSpecs       map[string][]ImportSpec
 	importsResolved   map[string][]string
 	exports           map[string][]string
+	exportSymbols     map[string][]ExportSymbol
 	identifiers       map[string]map[string]int
 	functionDecls     map[string][]string
 	variableDecls     map[string][]string
@@ -34,6 +35,7 @@ func NewCollector(cfg *config.Config) *Collector {
 		importSpecs:       map[string][]ImportSpec{},
 		importsResolved:   map[string][]string{},
 		exports:           map[string][]string{},
+		exportSymbols:     map[string][]ExportSymbol{},
 		identifiers:       map[string]map[string]int{},
 		functionDecls:     map[string][]string{},
 		variableDecls:     map[string][]string{},
@@ -56,6 +58,7 @@ type Collected struct {
 	ImportSpecs       map[string][]ImportSpec
 	ImportsResolved   map[string][]string
 	Exports           map[string][]string
+	ExportSymbols     map[string][]ExportSymbol
 	Identifiers       map[string]map[string]int
 	FunctionDecls     map[string][]string
 	VariableDecls     map[string][]string
@@ -102,6 +105,11 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 			c.identifiers[entry.Rel] = ast.Identifiers
 			c.functionDecls[entry.Rel] = ast.FunctionDecls
 			c.variableDecls[entry.Rel] = ast.VariableDecls
+			c.importSpecs[entry.Rel] = mergeImportSpecs(importSpecs, ast.ImportSpecs)
+			c.exports[entry.Rel] = mergeExportNames(c.exports[entry.Rel], ast.ExportSymbols)
+			c.exports[entry.Rel] = uniqueStrings(c.exports[entry.Rel])
+			c.importsResolved[entry.Rel] = resolveLocalImports(entry.Rel, c.importSpecs[entry.Rel], fileIndex)
+			c.exportSymbols[entry.Rel] = ast.ExportSymbols
 		}
 		c.dynamicIndicators[entry.Rel] = detectDynamic(content, c.cfg)
 
@@ -118,6 +126,7 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		ImportSpecs:       c.importSpecs,
 		ImportsResolved:   c.importsResolved,
 		Exports:           c.exports,
+		ExportSymbols:     c.exportSymbols,
 		Identifiers:       c.identifiers,
 		FunctionDecls:     c.functionDecls,
 		VariableDecls:     c.variableDecls,
@@ -238,6 +247,11 @@ type ImportSpec struct {
 	Names      []string
 	Wildcard   bool
 	SideEffect bool
+}
+
+type ExportSymbol struct {
+	Name string
+	Line int
 }
 
 type importSpecRegexes struct {
@@ -384,6 +398,43 @@ func resolveImportSpec(from string, spec ImportSpec, index map[string]scan.FileE
 		return target
 	}
 	return ""
+}
+
+func mergeImportSpecs(base []ImportSpec, overrides []ImportSpec) []ImportSpec {
+	if len(overrides) == 0 {
+		return base
+	}
+	combined := make([]ImportSpec, 0, len(base)+len(overrides))
+	combined = append(combined, base...)
+	combined = append(combined, overrides...)
+	return combined
+}
+
+func mergeExportNames(base []string, exports []ExportSymbol) []string {
+	combined := make([]string, 0, len(base)+len(exports))
+	combined = append(combined, base...)
+	for _, symbol := range exports {
+		if symbol.Name != "" {
+			combined = append(combined, symbol.Name)
+		}
+	}
+	return combined
+}
+
+func uniqueStrings(values []string) []string {
+	seen := map[string]bool{}
+	unique := []string{}
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if seen[value] {
+			continue
+		}
+		seen[value] = true
+		unique = append(unique, value)
+	}
+	return unique
 }
 
 func resolveFile(path string, index map[string]scan.FileEntry) (string, bool) {
