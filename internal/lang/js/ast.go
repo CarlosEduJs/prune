@@ -296,6 +296,11 @@ func collectExportSymbols(root *sitter.Node, content []byte, result *astResult) 
 						Name: "default",
 						Line: int(decl.StartPoint().Row) + 1,
 					})
+				} else if decl.Type() == "arrow_function" || decl.Type() == "function_expression" {
+					result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
+						Name: "default",
+						Line: int(decl.StartPoint().Row) + 1,
+					})
 				}
 			}
 		}
