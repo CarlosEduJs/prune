@@ -291,6 +291,11 @@ func collectExportSymbols(root *sitter.Node, content []byte, result *astResult) 
 							})
 						}
 					}
+				} else if decl.Type() == "function" || decl.Type() == "class" {
+					result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
+						Name: "default",
+						Line: int(decl.StartPoint().Row) + 1,
+					})
 				}
 			}
 		}
