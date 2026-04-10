@@ -4,8 +4,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"prune/internal/config"
 	"prune/internal/rules"
+	"prune/internal/scan"
 )
 
 func applyRules(cfg *config.Config, data *Collected) []rules.Finding {
@@ -40,6 +42,9 @@ func ruleUnusedFiles(cfg *config.Config, data *Collected) []rules.Finding {
 		if entrypoints[entry.Rel] {
 			continue
 		}
+		if isEntrypointPattern(cfg, entry.Rel) {
+			continue
+		}
 		if imported[entry.Rel] {
 			continue
 		}
@@ -63,11 +68,38 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 	}
 
 	usedExports := map[string]map[string]bool{}
+	for file, specs := range data.ImportSpecs {
+		_ = file
+		for _, spec := range specs {
+			if !strings.HasPrefix(spec.Source, ".") {
+				continue
+			}
+			resolved := spec.Resolved
+			if resolved == "" {
+				resolved = resolveImportedFile(file, spec.Source, data.Files)
+			}
+			if resolved == "" {
+				continue
+			}
+			if usedExports[resolved] == nil {
+				usedExports[resolved] = map[string]bool{}
+			}
+			if spec.Wildcard || spec.SideEffect {
+				usedExports[resolved]["*"] = true
+				continue
+			}
+			for _, name := range spec.Names {
+				usedExports[resolved][name] = true
+			}
+		}
+	}
 	findings := []rules.Finding{}
 	for file, exports := range data.Exports {
 		for _, symbol := range exports {
-			if usedExports[file] != nil && usedExports[file][symbol] {
-				continue
+			if usedExports[file] != nil {
+				if usedExports[file]["*"] || usedExports[file][symbol] {
+					continue
+				}
 			}
 			confidence := confidenceFor(cfg, "unused_export", "if_not_imported", "safe")
 			if isEntrypoint(cfg, file) {
@@ -94,12 +126,38 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 		return findings
 	}
 
-	for file, counts := range data.Identifiers {
-		for symbol, count := range counts {
-			if count > 1 {
+	for file, symbols := range data.FunctionDecls {
+		if !isRuleEnabled(cfg, "unused_function") {
+			continue
+		}
+		counts := data.Identifiers[file]
+		for _, symbol := range symbols {
+			if counts[symbol] > 1 {
 				continue
 			}
-			if !isRuleEnabled(cfg, "unused_variable") {
+			confidence := confidenceFor(cfg, "unused_function", "default", "likely_dead")
+			if len(data.DynamicIndicators[file]) > 0 {
+				confidence = confidenceFor(cfg, "unused_function", "if_dynamic_usage", "review")
+			}
+			findings = append(findings, rules.Finding{
+				ID:         "unused_function:" + file + ":" + symbol,
+				Kind:       "unused_function",
+				Confidence: confidence,
+				File:       file,
+				Line:       1,
+				Symbol:     symbol,
+				Reason:     "function declared but never referenced",
+			})
+		}
+	}
+
+	for file, symbols := range data.VariableDecls {
+		if !isRuleEnabled(cfg, "unused_variable") {
+			continue
+		}
+		counts := data.Identifiers[file]
+		for _, symbol := range symbols {
+			if counts[symbol] > 1 {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_variable", "default", "safe")
@@ -113,7 +171,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 				File:       file,
 				Line:       1,
 				Symbol:     symbol,
-				Reason:     "identifier appears only once in file",
+				Reason:     "variable declared but never referenced",
 			})
 		}
 	}
@@ -199,6 +257,18 @@ func buildEntrypointSet(cfg *config.Config) map[string]bool {
 	return set
 }
 
+func isEntrypointPattern(cfg *config.Config, file string) bool {
+	if cfg == nil {
+		return false
+	}
+	for _, pattern := range cfg.Entrypoints.Patterns {
+		if match, _ := doublestar.Match(pattern, file); match {
+			return true
+		}
+	}
+	return false
+}
+
 func isEntrypoint(cfg *config.Config, file string) bool {
 	if cfg == nil {
 		return false
@@ -214,4 +284,35 @@ func isEntrypoint(cfg *config.Config, file string) bool {
 		}
 	}
 	return false
+}
+
+func resolveImportedFile(from string, source string, files []scan.FileEntry) string {
+	index := map[string]bool{}
+	for _, entry := range files {
+		index[entry.Rel] = true
+	}
+
+	base := filepath.Dir(from)
+	path := filepath.ToSlash(filepath.Clean(filepath.Join(base, source)))
+	if index[path] {
+		return path
+	}
+	if strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".jsx") || strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".tsx") {
+		return ""
+	}
+
+	extensions := []string{".ts", ".tsx", ".js", ".jsx"}
+	for _, ext := range extensions {
+		candidate := path + ext
+		if index[candidate] {
+			return candidate
+		}
+	}
+	for _, ext := range extensions {
+		candidate := filepath.ToSlash(filepath.Join(path, "index"+ext))
+		if index[candidate] {
+			return candidate
+		}
+	}
+	return ""
 }
