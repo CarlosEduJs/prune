@@ -1,34 +1,87 @@
 version: 1
 project:
-  name: js-simple
-  language: js-ts
+    name: prune
+    language: js-ts
 scan:
-  paths:
-    - "examples/js-simple"
-  include:
-    - "src/**/*.js"
-  exclude:
-    - "node_modules/**"
+    paths:
+        - .
+    include:
+        - '**/*.js'
+        - '**/*.jsx'
+        - '**/*.ts'
+        - '**/*.tsx'
+    exclude:
+        - node_modules/**
+        - dist/**
+        - build/**
+        - .next/**
+        - out/**
+        - coverage/**
 entrypoints:
-  files:
-    - "src/index.js"
+    files:
+        - src/index.ts
+        - src/main.tsx
+    patterns:
+        - src/pages/**
+        - src/routes/**
 rules:
-  unused_function:
-    enabled: true
-  unused_variable:
-    enabled: true
-  unused_export:
-    enabled: true
-  unused_file:
-    enabled: false
-  dead_feature_flag:
-    enabled: true
-  suspicious_dynamic_usage:
-    enabled: true
+    dead_feature_flag:
+        enabled: true
+        confidence:
+            if_dynamic_reference: review
+            if_never_referenced: safe
+        patterns: []
+        attributes: {}
+        limit: 0
+    suspicious_dynamic_usage:
+        enabled: true
+        confidence:
+            default: review
+        patterns:
+            - eval
+            - Function
+            - require
+            - import(
+        attributes: {}
+        limit: 0
+    unused_export:
+        enabled: true
+        confidence:
+            if_entrypoint: review
+            if_not_imported: safe
+        patterns: []
+        attributes: {}
+        limit: 0
+    unused_file:
+        enabled: true
+        confidence:
+            default: safe
+            if_entrypoint: review
+        patterns: []
+        attributes: {}
+        limit: 0
+    unused_function:
+        enabled: true
+        confidence:
+            default: likely_dead
+            if_dynamic_usage: review
+        patterns: []
+        attributes: {}
+        limit: 0
+    unused_variable:
+        enabled: true
+        confidence:
+            default: safe
+            if_dynamic_usage: review
+            if_exported: likely_dead
+        patterns: []
+        attributes: {}
+        limit: 0
 feature_flags:
-  patterns:
-    - "flags\\.[A-Z_]+"
+    patterns:
+        - flags\.[A-Z0-9_]+
+        - featureFlags\.[A-Za-z0-9_]+
 report:
-  format: table
-  min_confidence: safe
-  include_evidence: false
+    format: table
+    min_confidence: safe
+    include_evidence: true

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"prune/internal/config"
 	"prune/internal/lang/js"
@@ -28,6 +29,15 @@ func runScan(ctx context.Context, args []string) error {
 
 	if len(opts.paths) > 0 {
 		cfg.Scan.Paths = opts.paths
+	} else {
+		configDir, err := filepath.Abs(filepath.Dir(opts.configPath))
+		if err == nil {
+			for i, p := range cfg.Scan.Paths {
+				if !filepath.IsAbs(p) {
+					cfg.Scan.Paths[i] = filepath.Join(configDir, p)
+				}
+			}
+		}
 	}
 
 	findings, err := runLanguage(ctx, cfg)
