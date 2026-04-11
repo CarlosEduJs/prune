@@ -1,0 +1,31 @@
+version: 1
+project:
+    name: js-complex
+    language: js-ts
+scan:
+    paths:
+        - src
+    include:
+        - '**/*.js'
+    exclude:
+        - node_modules/**
+entrypoints:
+    files:
+        - src/index.js
+rules:
+    unused_function:
+        enabled: true
+    unused_variable:
+        enabled: true
+    unused_export:
+        enabled: true
+    unused_file:
+        enabled: true
+    dead_feature_flag:
+        enabled: true
+    suspicious_dynamic_usage:
+        enabled: true
+report:
+    format: table
+    min_confidence: safe
+    include_evidence: true
