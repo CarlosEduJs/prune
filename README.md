@@ -1,0 +1,132 @@
+# Prune
+
+Static analysis tool designed to identify dead code in JavaScript and TypeScript projects (for now...).
+
+## Description
+
+Prune identifies unreachable code by building a dependency graph from defined entrypoints. It helps maintain clean codebases by detecting files, exports, functions, and variables that are no longer referenced in the application lifecycle.
+
+## Features
+
+- Dependency graph analysis utilizing Tree-sitter grammars.
+- Support for `.js`, `.jsx`, `.ts`, and `.tsx` extensions.
+- Detection types:
+    - Orphaned files (files never imported).
+    - Unused exports (symbols exported but never imported).
+    - Unused functions and variables.
+    - Suspicious dynamic code usage (e.g., `eval`, `Function`).
+- Machine-readable output (JSON) for automation.
+- CI/CD integration via exit codes and finding thresholds.
+- Cross-platform support (Linux, macOS, Windows).
+
+## How it Works
+
+The tool is written in Go and uses Tree-sitter for high-performance parsing. 
+
+- **internal/scan**: Manages file system crawling and glob pattern matching.
+- **internal/lang/js**: Implements the JavaScript and TypeScript parsers and AST traversal logic.
+- **internal/rules**: Contains the logic to correlate definitions and references to identify dead code.
+- **internal/report**: Handles data formatting for the CLI.
+
+The analysis starts from the `entrypoints` defined in the configuration. Any file or symbol not reachable from these roots is reported.
+
+## Installation
+
+### Requirements
+
+- Go 1.24 or higher.
+
+### Building from Source
+
+```bash
+go build -o prune ./cmd/prune
+```
+
+## Usage
+
+### Initialize
+
+Generate a default configuration file in the current directory:
+
+```bash
+prune init
+```
+
+### Scan
+
+Perform code analysis:
+
+```bash
+prune scan
+```
+
+Flags:
+- `--config`: Path to the configuration file (default: `prune.yaml`).
+- `--format`: Output format, either `table` or `json`.
+- `--min-confidence`: Minimum confidence level to report (`safe`, `likely_dead`, `review`).
+- `--fail-on-findings`: Exit with a non-zero status code if problems are detected.
+
+### List Rules
+
+List all available analysis rules:
+
+```bash
+prune rules
+```
+
+## Configuration
+
+Configuration is managed via `prune.yaml`.
+
+```yaml
+version: 1
+project:
+  name: my-project
+  language: js-ts
+scan:
+  paths:
+    - src
+  include:
+    - "**/*.ts"
+    - "**/*.tsx"
+  exclude:
+    - "node_modules/**"
+    - "dist/**"
+entrypoints:
+  files:
+    - src/main.ts
+rules:
+  unused_function:
+    enabled: true
+  unused_export:
+    enabled: true
+report:
+  format: table
+  min_confidence: safe
+```
+
+## Development
+
+### Running Tests
+
+```bash
+go test ./...
+```
+
+### Manual Testing
+
+The project includes examples in the `examples/` directory:
+
+```bash
+go run ./cmd/prune scan --config examples/js-complex/prune.yaml
+```
+
+## Limitations / Known Issues
+
+- Support is currently restricted to JavaScript and TypeScript ecosystems.
+- Dynamic imports or class property access via strings may result in false positives (marked as `REVIEW`).
+- Large codebases with circular dependencies may require higher memory allocation during Graph traversal.
+
+## License
+
+MIT
