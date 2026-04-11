@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+const version = "0.0.1"
+
 type rootOptions struct {
 	configPath     string
 	format         string
@@ -33,6 +35,9 @@ func Execute(ctx context.Context, args []string) error {
 	}
 
 	switch args[0] {
+	case "version":
+		fmt.Println("prune version ", version)
+		return nil
 	case "init":
 		return runInit(ctx, args[1:])
 	case "scan":
@@ -53,6 +58,7 @@ Usage:
   prune <command> [flags]
 
 Commands:
+  version Print version
   init    Create a default prune.yaml
   scan    Analyze project and report findings
   rules   List available rules
