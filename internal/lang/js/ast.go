@@ -128,11 +128,6 @@ func parseASTRoot(ctx context.Context, lang *sitter.Language, content []byte) (a
 
 var parseRoot = parseASTRoot
 
-func shouldUseJSAST(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	return ext == ".js" || ext == ".jsx"
-}
-
 func languageForPath(path string) *sitter.Language {
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {

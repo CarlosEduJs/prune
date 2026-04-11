@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -10,10 +9,10 @@ import (
 )
 
 type rootOptions struct {
-	configPath    string
-	format        string
-	minConfidence string
-	paths         stringSlice
+	configPath     string
+	format         string
+	minConfidence  string
+	paths          stringSlice
 	failOnFindings bool
 }
 
@@ -67,11 +66,4 @@ func parseRootFlags(fs *flag.FlagSet, opts *rootOptions) {
 	fs.StringVar(&opts.minConfidence, "min-confidence", "safe", "Minimum confidence to report")
 	fs.Var(&opts.paths, "paths", "Paths to scan (repeatable)")
 	fs.BoolVar(&opts.failOnFindings, "fail-on-findings", false, "Exit with error if findings are found")
-}
-
-func requireCommand(args []string) error {
-	if len(args) == 0 {
-		return errors.New("missing subcommand")
-	}
-	return nil
 }
