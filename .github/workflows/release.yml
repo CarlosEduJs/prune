@@ -91,6 +91,6 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean --skip-build
+          args: release --clean --skip=build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
