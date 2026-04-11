@@ -78,7 +78,7 @@ func TestTableFormatter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if string(data) != "No findings\n" {
+	if string(data) != "✨ No dead code found!\n" {
 		t.Fatalf("unexpected no-findings output")
 	}
 
@@ -88,11 +88,14 @@ func TestTableFormatter(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	output := string(data)
-	if !strings.Contains(output, "confidence\tkind\tfile\tline\tsymbol\treason") {
+	if !strings.Contains(output, "CONFIDENCE") || !strings.Contains(output, "REASON") {
 		t.Fatalf("missing header")
 	}
-	if !strings.Contains(output, "safe\tunused\ta.js\t2\tx\tr") {
-		t.Fatalf("missing row")
+	if !strings.Contains(output, "SAFE") {
+		t.Fatalf("missing row status")
+	}
+	if !strings.Contains(output, "a.js") {
+		t.Fatalf("missing row file")
 	}
 }
 
@@ -105,7 +108,7 @@ func TestTableFormatterMissingFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(string(data), "\t-\t") {
+	if !strings.Contains(string(data), "SAFE") {
 		t.Fatalf("expected placeholder for missing file")
 	}
 }

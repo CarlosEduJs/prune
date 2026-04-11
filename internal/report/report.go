@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"text/tabwriter"
 
 	"prune/internal/rules"
 )
@@ -48,20 +49,21 @@ type tableFormatter struct{}
 
 func (f tableFormatter) Format(findings []rules.Finding) ([]byte, error) {
 	if len(findings) == 0 {
-		return []byte("No findings\n"), nil
+		return []byte("✨ No dead code found!\n"), nil
 	}
 
 	var b strings.Builder
-	_, _ = fmt.Fprintln(&b, "confidence\tkind\tfile\tline\tsymbol\treason")
+	w := tabwriter.NewWriter(&b, 0, 0, 3, ' ', 0)
+	_, _ = fmt.Fprintln(w, "CONFIDENCE\tKIND\tFILE\tLINE\tSYMBOL\tREASON")
 	for _, finding := range findings {
 		file := finding.File
 		if file == "" {
 			file = "-"
 		}
 		_, _ = fmt.Fprintf(
-			&b,
+			w,
 			"%s\t%s\t%s\t%d\t%s\t%s\n",
-			finding.Confidence,
+			strings.ToUpper(finding.Confidence),
 			finding.Kind,
 			file,
 			finding.Line,
@@ -69,5 +71,6 @@ func (f tableFormatter) Format(findings []rules.Finding) ([]byte, error) {
 			finding.Reason,
 		)
 	}
+	_ = w.Flush()
 	return []byte(b.String()), nil
 }

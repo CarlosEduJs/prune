@@ -20,6 +20,6 @@ func runInit(_ context.Context, args []string) error {
 		return fmt.Errorf("writing default config: %w", err)
 	}
 
-	_, err := fmt.Fprintf(os.Stdout, "Created %s\n", *outPath)
+	_, err := fmt.Fprintf(os.Stdout, "✅ Created %s\n", *outPath)
 	return err
 }
