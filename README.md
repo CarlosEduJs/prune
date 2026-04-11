@@ -121,6 +121,36 @@ The project includes examples in the `examples/` directory:
 go run ./cmd/prune scan --config examples/js-complex/prune.yaml
 ```
 
+## CI/CD Integration
+
+To utilize Prune in a CI/CD environment, you can install the binary and incorporate it as a validation step.
+
+### GitHub Actions Example
+
+```yaml
+name: Code Quality
+on: [push, pull_request]
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          
+      - name: Install Prune
+        run: go install github.com/carlosedujs/prune/cmd/prune@latest
+        
+      - name: Run Analysis
+        run: prune scan --fail-on-findings
+```
+
+The `--fail-on-findings` flag ensures that the pipeline exits with a non-zero status code if unreachable dead code is detected, facilitating automated code quality enforcement.
+
 ## Limitations / Known Issues
 
 - Support is currently restricted to JavaScript and TypeScript ecosystems.
