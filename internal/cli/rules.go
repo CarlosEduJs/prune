@@ -1,13 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"prune/internal/rules"
 )
 
-func runRules(args []string) error {
+func runRules(_ context.Context, args []string) error {
 	if len(args) > 0 {
 		return fmt.Errorf("unexpected arguments: %v", args)
 	}

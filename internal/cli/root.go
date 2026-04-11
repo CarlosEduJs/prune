@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -25,27 +27,27 @@ func (s *stringSlice) Set(value string) error {
 	return nil
 }
 
-func Execute(args []string) error {
+func Execute(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return printUsage()
+		return printUsage(os.Stderr)
 	}
 
 	switch args[0] {
 	case "init":
-		return runInit(args[1:])
+		return runInit(ctx, args[1:])
 	case "scan":
-		return runScan(args[1:])
+		return runScan(ctx, args[1:])
 	case "rules":
-		return runRules(args[1:])
+		return runRules(ctx, args[1:])
 	case "help", "-h", "--help":
-		return printUsage()
+		return printUsage(os.Stdout)
 	default:
-		return fmt.Errorf("unknown command: %s", args[0])
+		return fmt.Errorf("unknown command: %q", args[0])
 	}
 }
 
-func printUsage() error {
-	_, err := fmt.Fprint(os.Stdout, `prune - dead code analysis CLI
+func printUsage(w io.Writer) error {
+	_, err := fmt.Fprint(w, `prune - dead code analysis CLI
 
 Usage:
   prune <command> [flags]

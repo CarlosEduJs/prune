@@ -9,14 +9,14 @@ import (
 )
 
 func TestNewFormatter(t *testing.T) {
-	if NewFormatter("json") == nil {
-		t.Fatalf("expected json formatter")
+	if f, err := NewFormatter("json"); err != nil || f == nil {
+		t.Fatalf("expected json formatter, got err: %v", err)
 	}
-	if NewFormatter("table") == nil {
-		t.Fatalf("expected table formatter")
+	if f, err := NewFormatter("table"); err != nil || f == nil {
+		t.Fatalf("expected table formatter, got err: %v", err)
 	}
-	if NewFormatter("unknown") != nil {
-		t.Fatalf("expected nil formatter for unknown")
+	if f, err := NewFormatter("unknown"); err == nil || f != nil {
+		t.Fatalf("expected error for unknown formatter")
 	}
 }
 
@@ -49,9 +49,9 @@ func TestFilterByConfidence(t *testing.T) {
 }
 
 func TestJSONFormatter(t *testing.T) {
-	formatter := NewFormatter("json")
-	if formatter == nil {
-		t.Fatalf("missing json formatter")
+	formatter, err := NewFormatter("json")
+	if err != nil || formatter == nil {
+		t.Fatalf("missing json formatter, err: %v", err)
 	}
 
 	findings := []rules.Finding{{ID: "f1", Confidence: "safe", File: "a.js", Line: 1}}
@@ -69,9 +69,9 @@ func TestJSONFormatter(t *testing.T) {
 }
 
 func TestTableFormatter(t *testing.T) {
-	formatter := NewFormatter("table")
-	if formatter == nil {
-		t.Fatalf("missing table formatter")
+	formatter, err := NewFormatter("table")
+	if err != nil || formatter == nil {
+		t.Fatalf("missing table formatter, err: %v", err)
 	}
 
 	data, err := formatter.Format(nil)
@@ -97,11 +97,11 @@ func TestTableFormatter(t *testing.T) {
 }
 
 func TestTableFormatterMissingFile(t *testing.T) {
-	formatter := NewFormatter("table")
-	if formatter == nil {
-		t.Fatalf("missing table formatter")
+	formatter, err := NewFormatter("table")
+	if err != nil || formatter == nil {
+		t.Fatalf("missing table formatter, err: %v", err)
 	}
-	_, err := formatter.Format([]rules.Finding{{Confidence: "safe"}})
+	_, err = formatter.Format([]rules.Finding{{Confidence: "safe"}})
 	if err == nil {
 		t.Fatalf("expected error for missing file")
 	}

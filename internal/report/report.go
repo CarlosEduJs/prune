@@ -13,14 +13,14 @@ type Formatter interface {
 	Format([]rules.Finding) ([]byte, error)
 }
 
-func NewFormatter(format string) Formatter {
+func NewFormatter(format string) (Formatter, error) {
 	switch strings.ToLower(format) {
 	case "json":
-		return jsonFormatter{}
+		return jsonFormatter{}, nil
 	case "table":
-		return tableFormatter{}
+		return tableFormatter{}, nil
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown format: %q", format)
 	}
 }
 

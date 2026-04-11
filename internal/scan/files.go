@@ -1,7 +1,9 @@
 package scan
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -14,7 +16,7 @@ type FileEntry struct {
 	Rel  string
 }
 
-func collectFiles(cfg *config.Config) ([]FileEntry, error) {
+func collectFiles(ctx context.Context, cfg *config.Config) ([]FileEntry, error) {
 	if cfg == nil {
 		return nil, errors.New("config is required")
 	}
@@ -31,10 +33,13 @@ func collectFiles(cfg *config.Config) ([]FileEntry, error) {
 	for _, root := range paths {
 		absRoot, err := filepath.Abs(root)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("resolving absolute path for %q: %w", root, err)
 		}
 
 		err = filepath.WalkDir(absRoot, func(path string, d os.DirEntry, err error) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			if err != nil {
 				return err
 			}

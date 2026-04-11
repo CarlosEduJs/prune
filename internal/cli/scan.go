@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 	"prune/internal/rules"
 )
 
-func runScan(args []string) error {
+func runScan(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	opts := rootOptions{}
 	parseRootFlags(fs, &opts)
@@ -22,21 +23,21 @@ func runScan(args []string) error {
 
 	cfg, err := config.Load(opts.configPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("loading config: %w", err)
 	}
 
 	if len(opts.paths) > 0 {
 		cfg.Scan.Paths = opts.paths
 	}
 
-	findings, err := runLanguage(cfg)
+	findings, err := runLanguage(ctx, cfg)
 	if err != nil {
 		return err
 	}
 
-	out := report.NewFormatter(opts.format)
-	if out == nil {
-		return fmt.Errorf("unknown format: %s", opts.format)
+	out, err := report.NewFormatter(opts.format)
+	if err != nil {
+		return fmt.Errorf("creating formatter: %w", err)
 	}
 
 	filtered := report.FilterByConfidence(findings, opts.minConfidence)
@@ -49,14 +50,14 @@ func runScan(args []string) error {
 	return err
 }
 
-func runLanguage(cfg *config.Config) ([]rules.Finding, error) {
+func runLanguage(ctx context.Context, cfg *config.Config) ([]rules.Finding, error) {
 	if cfg.Project.Language == "" {
 		return nil, errors.New("project.language is required")
 	}
 
 	switch cfg.Project.Language {
 	case "js-ts":
-		return js.Analyze(cfg)
+		return js.Analyze(ctx, cfg)
 	default:
 		return nil, errors.New("unsupported language")
 	}
