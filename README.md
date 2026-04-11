@@ -42,6 +42,12 @@ The analysis starts from the `entrypoints` defined in the configuration. Any fil
 go build -o prune ./cmd/prune
 ```
 
+### Check version
+
+```bash
+prune version
+```
+
 ## Usage
 
 ### Initialize
