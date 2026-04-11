@@ -15,9 +15,10 @@ type Config struct {
 		Language string `yaml:"language"`
 	} `yaml:"project"`
 	Scan struct {
-		Paths   []string `yaml:"paths"`
-		Include []string `yaml:"include"`
-		Exclude []string `yaml:"exclude"`
+		Paths   []string     `yaml:"paths"`
+		Include []string     `yaml:"include"`
+		Exclude []string     `yaml:"exclude"`
+		Stream  StreamConfig `yaml:"stream"`
 	} `yaml:"scan"`
 	Entrypoints struct {
 		Files    []string `yaml:"files"`
@@ -32,6 +33,11 @@ type Config struct {
 		MinConfidence   string `yaml:"min_confidence"`
 		IncludeEvidence bool   `yaml:"include_evidence"`
 	} `yaml:"report"`
+}
+
+type StreamConfig struct {
+	Enabled    bool `yaml:"enabled"`
+	IntervalMs int  `yaml:"interval_ms"`
 }
 
 type RuleConfig struct {
