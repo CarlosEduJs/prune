@@ -12,9 +12,11 @@ import (
 	"prune/internal/lang/js"
 	"prune/internal/report"
 	"prune/internal/rules"
+	"time"
 )
 
 func runScan(ctx context.Context, args []string) error {
+	start := time.Now()
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	opts := rootOptions{}
 	parseRootFlags(fs, &opts)
@@ -63,6 +65,10 @@ func runScan(ctx context.Context, args []string) error {
 
 	if opts.failOnFindings && len(filtered) > 0 {
 		return fmt.Errorf("found %d findings", len(filtered))
+	}
+
+	if opts.format == "table" {
+		fmt.Printf("\nScan finished in %s\n", time.Since(start).Round(time.Millisecond))
 	}
 
 	return nil
