@@ -42,9 +42,51 @@ func runScan(ctx context.Context, args []string) error {
 		}
 	}
 
-	findings, err := runLanguage(ctx, cfg)
+	if opts.stream {
+		cfg.Scan.Stream.Enabled = true
+	}
+	if opts.streamInterval > 0 {
+		cfg.Scan.Stream.IntervalMs = opts.streamInterval
+	}
+
+	var findings []rules.Finding
+	streamedOutput := false
+
+	if cfg.Scan.Stream.Enabled {
+		var streamHandler js.StreamHandler
+		format := opts.format
+
+		if format == "json" && cfg.Scan.Stream.Enabled {
+			format = "ndjson"
+		}
+
+		if format == "ndjson" {
+			streamHandler = func(batchFindings []rules.Finding) error {
+				filtered := report.FilterByConfidence(batchFindings, opts.minConfidence)
+				out, err := report.NewFormatter("ndjson")
+				if err != nil {
+					return err
+				}
+				data, err := out.Format(filtered)
+				if err != nil {
+					return err
+				}
+				os.Stdout.Write(data)
+				return nil
+			}
+			streamedOutput = true
+		}
+
+		findings, err = js.AnalyzeStreaming(ctx, cfg, streamHandler)
+	} else {
+		findings, err = runLanguage(ctx, cfg)
+	}
 	if err != nil {
 		return err
+	}
+
+	if streamedOutput {
+		return nil
 	}
 
 	out, err := report.NewFormatter(opts.format)

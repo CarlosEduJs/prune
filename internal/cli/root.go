@@ -16,6 +16,8 @@ type rootOptions struct {
 	minConfidence  string
 	paths          stringSlice
 	failOnFindings bool
+	stream         bool
+	streamInterval int
 }
 
 type stringSlice []string
@@ -72,4 +74,6 @@ func parseRootFlags(fs *flag.FlagSet, opts *rootOptions) {
 	fs.StringVar(&opts.minConfidence, "min-confidence", "safe", "Minimum confidence to report")
 	fs.Var(&opts.paths, "paths", "Paths to scan (repeatable)")
 	fs.BoolVar(&opts.failOnFindings, "fail-on-findings", false, "Exit with error if findings are found")
+	fs.BoolVar(&opts.stream, "stream", false, "Enable streaming mode with partial results")
+	fs.IntVar(&opts.streamInterval, "stream-interval", 250, "Interval in ms between stream flushes")
 }
