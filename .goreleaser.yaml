@@ -10,7 +10,8 @@ before:
     - go generate ./...
 
 builds:
-  - binary: prune
+  - id: linux-windows
+    binary: prune
     main: ./cmd/prune
     env:
       - CGO_ENABLED=1
@@ -19,13 +20,10 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     goarch:
       - amd64
       - arm64
     ignore:
-      - goos: darwin
-        goarch: "386"
       - goos: windows
         goarch: "386"
       - goos: linux
@@ -53,16 +51,19 @@ builds:
         env:
           - CC=zig cc -target aarch64-windows-gnu
           - CXX=zig c++ -target aarch64-windows-gnu
-      - goos: darwin
-        goarch: amd64
-        env:
-          - CC=zig cc -target x86_64-macos
-          - CXX=zig c++ -target x86_64-macos
-      - goos: darwin
-        goarch: arm64
-        env:
-          - CC=zig cc -target aarch64-macos
-          - CXX=zig c++ -target aarch64-macos
+
+  - id: macos
+    binary: prune
+    main: ./cmd/prune
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 
 archives:
   - formats: [tar.gz]
