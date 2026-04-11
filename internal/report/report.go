@@ -2,7 +2,6 @@ package report
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -55,15 +54,16 @@ func (f tableFormatter) Format(findings []rules.Finding) ([]byte, error) {
 	var b strings.Builder
 	_, _ = fmt.Fprintln(&b, "confidence\tkind\tfile\tline\tsymbol\treason")
 	for _, finding := range findings {
-		if finding.File == "" {
-			return nil, errors.New("finding missing file path")
+		file := finding.File
+		if file == "" {
+			file = "-"
 		}
 		_, _ = fmt.Fprintf(
 			&b,
 			"%s\t%s\t%s\t%d\t%s\t%s\n",
 			finding.Confidence,
 			finding.Kind,
-			finding.File,
+			file,
 			finding.Line,
 			finding.Symbol,
 			finding.Reason,
