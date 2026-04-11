@@ -326,7 +326,7 @@ func (c *Collector) parseImportSpecs(content string) []ImportSpec {
 			names = append(names, match[1])
 			specs = append(specs, ImportSpec{
 				Source:   match[3],
-				Names:    names,
+				Names:    append(names, "default"),
 				Wildcard: true,
 			})
 		}
@@ -345,7 +345,7 @@ func (c *Collector) parseImportSpecs(content string) []ImportSpec {
 		if len(match) > 2 {
 			specs = append(specs, ImportSpec{
 				Source:   match[2],
-				Names:    []string{match[1]},
+				Names:    []string{match[1], "default"},
 				Wildcard: true,
 			})
 		}
@@ -375,7 +375,7 @@ func (c *Collector) parseImportSpecs(content string) []ImportSpec {
 		if len(match) > 2 {
 			specs = append(specs, ImportSpec{
 				Source:   match[2],
-				Names:    []string{match[1]},
+				Names:    []string{match[1], "default"},
 				Wildcard: true,
 			})
 		}

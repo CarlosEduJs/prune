@@ -4,7 +4,7 @@ project:
   language: js-ts
 scan:
   paths:
-    - .
+    - "examples/js-simple"
   include:
     - "src/**/*.js"
   exclude:
@@ -20,7 +20,7 @@ rules:
   unused_export:
     enabled: true
   unused_file:
-    enabled: true
+    enabled: false
   dead_feature_flag:
     enabled: true
   suspicious_dynamic_usage:

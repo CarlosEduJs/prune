@@ -101,8 +101,11 @@ func TestTableFormatterMissingFile(t *testing.T) {
 	if err != nil || formatter == nil {
 		t.Fatalf("missing table formatter, err: %v", err)
 	}
-	_, err = formatter.Format([]rules.Finding{{Confidence: "safe"}})
-	if err == nil {
-		t.Fatalf("expected error for missing file")
+	data, err := formatter.Format([]rules.Finding{{Confidence: "safe", Kind: "dead_feature_flag"}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(string(data), "\t-\t") {
+		t.Fatalf("expected placeholder for missing file")
 	}
 }

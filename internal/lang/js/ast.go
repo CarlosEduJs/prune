@@ -333,7 +333,7 @@ func parseImportStatement(node astNode, content []byte) []ImportSpec {
 	specs := []ImportSpec{}
 	switch clause.Type() {
 	case "identifier":
-		specs = append(specs, ImportSpec{Source: source, Names: []string{nodeContent(clause, content)}, Wildcard: true})
+		specs = append(specs, ImportSpec{Source: source, Names: []string{nodeContent(clause, content), "default"}, Wildcard: true})
 	case "namespace_import":
 		nameNode := clause.ChildByFieldName("name")
 		if nameNode != nil {
@@ -358,7 +358,7 @@ func parseImportClause(node astNode, content []byte, source string) []ImportSpec
 	specs := []ImportSpec{}
 	defaultNode := node.ChildByFieldName("name")
 	if defaultNode != nil && defaultNode.Type() == "identifier" {
-		specs = append(specs, ImportSpec{Source: source, Names: []string{nodeContent(defaultNode, content)}, Wildcard: true})
+		specs = append(specs, ImportSpec{Source: source, Names: []string{nodeContent(defaultNode, content), "default"}, Wildcard: true})
 	}
 
 	for i := 0; i < node.ChildCount(); i++ {
