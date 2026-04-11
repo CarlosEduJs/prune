@@ -13,7 +13,10 @@ builds:
   - binary: prune
     main: ./cmd/prune
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
+      # Mapeamento dinâmico de targets para o Zig CC
+      - CC=zig cc -target {{ if eq .Os "linux" }}{{ if eq .Arch "amd64" }}x86_64-linux-gnu{{ else }}aarch64-linux-gnu{{ end }}{{ else if eq .Os "windows" }}x86_64-windows-gnu{{ else if eq .Os "darwin" }}{{ if eq .Arch "amd64" }}x86_64-macos{{ else }}aarch64-macos{{ end }}{{ end }}
+      - CXX=zig c++ -target {{ if eq .Os "linux" }}{{ if eq .Arch "amd64" }}x86_64-linux-gnu{{ else }}aarch64-linux-gnu{{ end }}{{ else if eq .Os "windows" }}x86_64-windows-gnu{{ else if eq .Os "darwin" }}{{ if eq .Arch "amd64" }}x86_64-macos{{ else }}aarch64-macos{{ end }}{{ end }}
     goos:
       - linux
       - windows
@@ -21,9 +24,12 @@ builds:
     goarch:
       - amd64
       - arm64
-      - "386"
     ignore:
       - goos: darwin
+        goarch: "386"
+      - goos: windows
+        goarch: "386"
+      - goos: linux
         goarch: "386"
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
