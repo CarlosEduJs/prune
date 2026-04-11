@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"prune/internal/config"
@@ -43,15 +44,19 @@ func collectFiles(ctx context.Context, cfg *config.Config) ([]FileEntry, error) 
 			if err != nil {
 				return err
 			}
-			if d.IsDir() {
-				return nil
-			}
 
 			rel, err := filepath.Rel(absRoot, path)
 			if err != nil {
 				return err
 			}
 			rel = filepath.ToSlash(rel)
+
+			if d.IsDir() {
+				if matchesDirAny(rel, exclude) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
 
 			if len(include) > 0 && !matchesAny(rel, include) {
 				return nil
@@ -77,6 +82,21 @@ func matchesAny(path string, patterns []string) bool {
 		if err == nil && matched {
 			return true
 		}
+	}
+	return false
+}
+
+func matchesDirAny(dirPath string, patterns []string) bool {
+	parts := strings.Split(dirPath, "/")
+	for i := range parts {
+		subPath := strings.Join(parts[i:], "/")
+		if matchesAny(subPath, patterns) {
+			return true
+		}
+	}
+	_, last := filepath.Split(dirPath)
+	if last != "" && matchesAny(last, patterns) {
+		return true
 	}
 	return false
 }
