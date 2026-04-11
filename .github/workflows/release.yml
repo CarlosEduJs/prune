@@ -30,7 +30,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean --skip=publish --id linux-windows
+          args: release --clean --skip=publish --config .goreleaser.linux-windows.yaml
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -61,7 +61,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean --skip=publish --id macos
+          args: release --clean --skip=publish --config .goreleaser.macos.yaml
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:

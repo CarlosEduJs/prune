@@ -4,9 +4,7 @@ project_name: prune
 
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod tidy
-    # you may remove this if you don't need go generate
     - go generate ./...
 
 builds:
@@ -51,19 +49,6 @@ builds:
         env:
           - CC=zig cc -target aarch64-windows-gnu
           - CXX=zig c++ -target aarch64-windows-gnu
-
-  - id: macos
-    binary: prune
-    main: ./cmd/prune
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 
 archives:
   - formats: [tar.gz]
