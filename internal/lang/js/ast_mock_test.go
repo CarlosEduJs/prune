@@ -1,6 +1,7 @@
 package js
 
 import (
+	"context"
 	"testing"
 	"unsafe"
 
@@ -42,14 +43,14 @@ func TestCollectASTDataWithMockParser(t *testing.T) {
 	root.children = []*fakeNode{ident}
 	content := []byte("const demo = 1")
 
-	parseRoot = func(_ *sitter.Language, _ []byte) (astNode, bool) {
-		return root, true
+	parseRoot = func(_ context.Context, _ *sitter.Language, _ []byte) (astNode, error) {
+		return root, nil
 	}
 	defer func() { parseRoot = parseASTRoot }()
 
-	result, ok := collectASTData("file.ts", content, nil)
-	if !ok {
-		t.Fatalf("expected parse success")
+	result, err := collectASTData(context.Background(), "file.ts", content, nil)
+	if err != nil {
+		t.Fatalf("expected parse success: %v", err)
 	}
 	if result.Identifiers["demo"] != 1 {
 		t.Fatalf("expected identifier demo")
@@ -69,12 +70,12 @@ func TestCollectASTDataExportsWithMock(t *testing.T) {
 	root.children = []*fakeNode{exportNode}
 
 	content := []byte("export function foo() {}")
-	parseRoot = func(_ *sitter.Language, _ []byte) (astNode, bool) { return root, true }
+	parseRoot = func(_ context.Context, _ *sitter.Language, _ []byte) (astNode, error) { return root, nil }
 	defer func() { parseRoot = parseASTRoot }()
 
-	result, ok := collectASTData("file.ts", content, nil)
-	if !ok {
-		t.Fatalf("expected parse success")
+	result, err := collectASTData(context.Background(), "file.ts", content, nil)
+	if err != nil {
+		t.Fatalf("expected parse success: %v", err)
 	}
 	if len(result.ExportSymbols) != 1 || result.ExportSymbols[0].Name != "foo" {
 		t.Fatalf("expected export symbol foo")
@@ -94,12 +95,12 @@ func TestCollectASTDataImportWithMock(t *testing.T) {
 	root.children = []*fakeNode{importStmt}
 
 	content := []byte("import foo from 'bar'")
-	parseRoot = func(_ *sitter.Language, _ []byte) (astNode, bool) { return root, true }
+	parseRoot = func(_ context.Context, _ *sitter.Language, _ []byte) (astNode, error) { return root, nil }
 	defer func() { parseRoot = parseASTRoot }()
 
-	result, ok := collectASTData("file.ts", content, nil)
-	if !ok {
-		t.Fatalf("expected parse success")
+	result, err := collectASTData(context.Background(), "file.ts", content, nil)
+	if err != nil {
+		t.Fatalf("expected parse success: %v", err)
 	}
 	if len(result.ImportSpecs) != 1 {
 		t.Fatalf("expected 1 import spec")
@@ -119,12 +120,12 @@ func TestCollectASTDataFeatureFlagsMock(t *testing.T) {
 	root.children = []*fakeNode{member}
 
 	content := []byte("flags.ABCD")
-	parseRoot = func(_ *sitter.Language, _ []byte) (astNode, bool) { return root, true }
+	parseRoot = func(_ context.Context, _ *sitter.Language, _ []byte) (astNode, error) { return root, nil }
 	defer func() { parseRoot = parseASTRoot }()
 
-	result, ok := collectASTData("file.ts", content, []string{"flags\\.[A-Z]+"})
-	if !ok {
-		t.Fatalf("expected parse success")
+	result, err := collectASTData(context.Background(), "file.ts", content, []string{"flags\\.[A-Z]+"})
+	if err != nil {
+		t.Fatalf("expected parse success: %v", err)
 	}
 	if len(result.FlagHits) != 1 || result.FlagHits[0].Flag != "flags.ABCD" {
 		t.Fatalf("expected flag hit")

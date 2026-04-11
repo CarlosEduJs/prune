@@ -1,7 +1,9 @@
 package js
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -78,7 +80,7 @@ type Collected struct {
 	DynamicIndicators map[string][]string
 }
 
-func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
+func (c *Collector) Collect(ctx context.Context, entries []scan.FileEntry) (*Collected, error) {
 	if c == nil || c.cfg == nil {
 		return nil, errors.New("collector config is required")
 	}
@@ -92,9 +94,12 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 	flagRegexes := compileRegexes(patterns)
 
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		content, err := readFile(entry.Path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("reading file %q: %w", entry.Path, err)
 		}
 		contentBytes := []byte(content)
 
@@ -116,7 +121,7 @@ func (c *Collector) Collect(entries []scan.FileEntry) (*Collected, error) {
 		c.variableDecls[entry.Rel] = extractVariableDecls(content)
 		c.functionLines[entry.Rel] = map[string]int{}
 		c.variableLines[entry.Rel] = map[string]int{}
-		if ast, ok := collectASTData(entry.Rel, contentBytes, c.cfg.FeatureFlags.Patterns); ok {
+		if ast, err := collectASTData(ctx, entry.Rel, contentBytes, c.cfg.FeatureFlags.Patterns); err == nil {
 			c.identifiers[entry.Rel] = ast.Identifiers
 			c.usageCounts[entry.Rel] = ast.UsageCounts
 			c.functionDecls[entry.Rel] = ast.FunctionDecls

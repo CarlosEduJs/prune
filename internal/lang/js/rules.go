@@ -309,7 +309,7 @@ func isEntrypointPattern(cfg *config.Config, file string) bool {
 		return false
 	}
 	for _, pattern := range cfg.Entrypoints.Patterns {
-		if match, _ := doublestar.Match(pattern, file); match {
+		if match, err := doublestar.Match(pattern, file); err == nil && match {
 			return true
 		}
 	}

@@ -20,7 +20,7 @@ func Analyze(ctx context.Context, cfg *config.Config) ([]rules.Finding, error) {
 	}
 
 	collector := NewCollector(cfg)
-	collected, err := collector.Collect(entries)
+	collected, err := collector.Collect(ctx, entries)
 	if err != nil {
 		return nil, err
 	}

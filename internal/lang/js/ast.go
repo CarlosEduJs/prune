@@ -1,6 +1,9 @@
 package js
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -70,15 +73,15 @@ type astResult struct {
 	FlagHits      []FlagOccurrence
 }
 
-func collectASTData(path string, content []byte, flagPatterns []string) (*astResult, bool) {
+func collectASTData(ctx context.Context, path string, content []byte, flagPatterns []string) (*astResult, error) {
 	lang := languageForPath(path)
 	if lang == nil {
-		return nil, false
+		return nil, fmt.Errorf("no language found for path %s", path)
 	}
 
-	root, ok := parseRoot(lang, content)
-	if !ok {
-		return nil, false
+	root, err := parseRoot(ctx, lang, content)
+	if err != nil {
+		return nil, err
 	}
 
 	result := &astResult{
@@ -101,23 +104,26 @@ func collectASTData(path string, content []byte, flagPatterns []string) (*astRes
 	collectExportSymbols(root, content, result)
 	collectFlagHits(root, content, result, flagPatterns)
 
-	return result, true
+	return result, nil
 }
 
-func parseASTRoot(lang *sitter.Language, content []byte) (astNode, bool) {
+func parseASTRoot(ctx context.Context, lang *sitter.Language, content []byte) (astNode, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(lang)
 	defer parser.Close()
 
-	tree, err := parser.ParseCtx(nil, nil, content)
-	if err != nil || tree == nil {
-		return nil, false
+	tree, err := parser.ParseCtx(ctx, nil, content)
+	if err != nil {
+		return nil, err
+	}
+	if tree == nil {
+		return nil, errors.New("parsed tree is nil")
 	}
 	root := tree.RootNode()
 	if root == nil || root.HasError() {
-		return nil, false
+		return nil, errors.New("root node is nil or has error")
 	}
-	return wrapNode(root), true
+	return wrapNode(root), nil
 }
 
 var parseRoot = parseASTRoot
