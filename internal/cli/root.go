@@ -14,6 +14,7 @@ type rootOptions struct {
 	format        string
 	minConfidence string
 	paths         stringSlice
+	failOnFindings bool
 }
 
 type stringSlice []string
@@ -65,6 +66,7 @@ func parseRootFlags(fs *flag.FlagSet, opts *rootOptions) {
 	fs.StringVar(&opts.format, "format", "table", "Output format: table or json")
 	fs.StringVar(&opts.minConfidence, "min-confidence", "safe", "Minimum confidence to report")
 	fs.Var(&opts.paths, "paths", "Paths to scan (repeatable)")
+	fs.BoolVar(&opts.failOnFindings, "fail-on-findings", false, "Exit with error if findings are found")
 }
 
 func requireCommand(args []string) error {

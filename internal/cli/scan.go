@@ -57,7 +57,15 @@ func runScan(ctx context.Context, args []string) error {
 	}
 
 	_, err = os.Stdout.Write(data)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if opts.failOnFindings && len(filtered) > 0 {
+		return fmt.Errorf("found %d findings", len(filtered))
+	}
+
+	return nil
 }
 
 func runLanguage(ctx context.Context, cfg *config.Config) ([]rules.Finding, error) {
