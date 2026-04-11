@@ -15,7 +15,8 @@ Prune identifies unreachable code by building a dependency graph from defined en
     - Unused exports (symbols exported but never imported).
     - Unused functions and variables.
     - Suspicious dynamic code usage (e.g., `eval`, `Function`).
-- Machine-readable output (JSON) for automation.
+- Machine-readable output (JSON, NDJSON) for automation.
+- **Streaming mode** for partial results in real-time.
 - CI/CD integration via exit codes and finding thresholds.
 - Cross-platform support (Linux, macOS, Windows).
 
@@ -68,9 +69,31 @@ prune scan
 
 Flags:
 - `--config`: Path to the configuration file (default: `prune.yaml`).
-- `--format`: Output format, either `table` or `json`.
+- `--format`: Output format: `table`, `json`, or `ndjson`.
 - `--min-confidence`: Minimum confidence level to report (`safe`, `likely_dead`, `review`).
 - `--fail-on-findings`: Exit with a non-zero status code if problems are detected.
+- `--stream`: Enable streaming mode for partial results in real-time.
+- `--stream-interval`: Interval in ms between stream flushes (default: 250ms).
+
+### Streaming Mode
+
+For large projects, you can use streaming mode to receive results incrementally:
+
+```bash
+# Stream results as NDJSON (one JSON object per line)
+prune scan --stream --format ndjson
+
+# Faster flush interval (100ms)
+prune scan --stream --stream-interval 100
+
+# Can also use with json format (auto-converted to ndjson)
+prune scan --stream --format json
+```
+
+Streaming outputs findings in real-time as files are processed. This is useful for:
+- Large codebases where you want immediate feedback
+- CI/CD pipelines that want to stream results to external systems
+- Debugging analysis progress
 
 ### List Rules
 
@@ -98,6 +121,9 @@ scan:
   exclude:
     - "node_modules/**"
     - "dist/**"
+  stream:
+    enabled: true
+    interval_ms: 250
 entrypoints:
   files:
     - src/main.ts
