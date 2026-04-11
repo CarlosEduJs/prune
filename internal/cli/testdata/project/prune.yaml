@@ -1,0 +1,34 @@
+version: 1
+project:
+  name: prune
+  language: js-ts
+scan:
+  paths:
+    - .
+  include:
+    - "**/*.ts"
+  exclude:
+    - "node_modules/**"
+entrypoints:
+  files:
+    - "src/index.ts"
+rules:
+  unused_export:
+    enabled: true
+  unused_function:
+    enabled: true
+  unused_variable:
+    enabled: true
+  unused_file:
+    enabled: true
+  dead_feature_flag:
+    enabled: false
+  suspicious_dynamic_usage:
+    enabled: true
+feature_flags:
+  patterns:
+    - "flags\\.[A-Z_]+"
+report:
+  format: table
+  min_confidence: safe
+  include_evidence: false
