@@ -85,7 +85,7 @@ jobs:
           path: release-artifacts
           merge-multiple: true
       - name: Create GitHub Release
-        uses: softprop/gh-release@v2
+        uses: softprops/gh-release@v2
         with:
           files: release-artifacts/*
           generate_release_notes: true
