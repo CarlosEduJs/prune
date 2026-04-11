@@ -11,6 +11,53 @@ import (
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
+type astPoint struct {
+	Row uint32
+}
+
+type astNode interface {
+	Type() string
+	ChildCount() int
+	Child(int) astNode
+	ChildByFieldName(string) astNode
+	Parent() astNode
+	StartPoint() astPoint
+	StartByte() uint32
+	EndByte() uint32
+	ID() uint32
+}
+
+type tsNode struct {
+	n *sitter.Node
+}
+
+func wrapNode(node *sitter.Node) astNode {
+	if node == nil {
+		return nil
+	}
+	return &tsNode{n: node}
+}
+
+func (t *tsNode) Type() string { return t.n.Type() }
+
+func (t *tsNode) ChildCount() int { return int(t.n.ChildCount()) }
+
+func (t *tsNode) Child(index int) astNode { return wrapNode(t.n.Child(index)) }
+
+func (t *tsNode) ChildByFieldName(name string) astNode {
+	return wrapNode(t.n.ChildByFieldName(name))
+}
+
+func (t *tsNode) Parent() astNode { return wrapNode(t.n.Parent()) }
+
+func (t *tsNode) StartPoint() astPoint { return astPoint{Row: t.n.StartPoint().Row} }
+
+func (t *tsNode) StartByte() uint32 { return t.n.StartByte() }
+
+func (t *tsNode) EndByte() uint32 { return t.n.EndByte() }
+
+func (t *tsNode) ID() uint32 { return uint32(t.n.ID()) }
+
 type astResult struct {
 	Identifiers   map[string]int
 	UsageCounts   map[string]int
@@ -29,16 +76,8 @@ func collectASTData(path string, content []byte, flagPatterns []string) (*astRes
 		return nil, false
 	}
 
-	parser := sitter.NewParser()
-	parser.SetLanguage(lang)
-	defer parser.Close()
-
-	tree, err := parser.ParseCtx(nil, nil, content)
-	if err != nil || tree == nil {
-		return nil, false
-	}
-	root := tree.RootNode()
-	if root == nil || root.HasError() {
+	root, ok := parseRoot(lang, content)
+	if !ok {
 		return nil, false
 	}
 
@@ -65,6 +104,24 @@ func collectASTData(path string, content []byte, flagPatterns []string) (*astRes
 	return result, true
 }
 
+func parseASTRoot(lang *sitter.Language, content []byte) (astNode, bool) {
+	parser := sitter.NewParser()
+	parser.SetLanguage(lang)
+	defer parser.Close()
+
+	tree, err := parser.ParseCtx(nil, nil, content)
+	if err != nil || tree == nil {
+		return nil, false
+	}
+	root := tree.RootNode()
+	if root == nil || root.HasError() {
+		return nil, false
+	}
+	return wrapNode(root), true
+}
+
+var parseRoot = parseASTRoot
+
 func shouldUseJSAST(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".js" || ext == ".jsx"
@@ -84,61 +141,34 @@ func languageForPath(path string) *sitter.Language {
 	}
 }
 
-func collectIdentifiers(root *sitter.Node, content []byte, result *astResult) {
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
-
-	for {
-		node := cursor.CurrentNode()
-		if node.Type() == "identifier" {
-			name := nodeContent(node, content)
-			if name != "" {
-				result.Identifiers[name]++
-			}
+func collectIdentifiers(root astNode, content []byte, result *astResult) {
+	walkAST(root, func(node astNode) {
+		if node.Type() != "identifier" {
+			return
 		}
-
-		if cursor.GoToFirstChild() {
-			continue
+		name := nodeContent(node, content)
+		if name != "" {
+			result.Identifiers[name]++
 		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
-		}
-	}
+	})
 }
 
-func collectUsageCounts(root *sitter.Node, content []byte, result *astResult) {
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
-
-	for {
-		node := cursor.CurrentNode()
-		if node.Type() == "identifier" {
-			if isDeclarationIdentifier(node) {
-				if cursor.GoToFirstChild() {
-					continue
-				}
-			} else {
-				name := nodeContent(node, content)
-				if name != "" {
-					result.UsageCounts[name]++
-				}
-			}
+func collectUsageCounts(root astNode, content []byte, result *astResult) {
+	walkAST(root, func(node astNode) {
+		if node.Type() != "identifier" {
+			return
 		}
-
-		if cursor.GoToFirstChild() {
-			continue
+		if isDeclarationIdentifier(node) {
+			return
 		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
+		name := nodeContent(node, content)
+		if name != "" {
+			result.UsageCounts[name]++
 		}
-	}
+	})
 }
 
-func isDeclarationIdentifier(node *sitter.Node) bool {
+func isDeclarationIdentifier(node astNode) bool {
 	if node == nil {
 		return false
 	}
@@ -163,73 +193,48 @@ func isDeclarationIdentifier(node *sitter.Node) bool {
 	return false
 }
 
-func collectFunctionDecls(root *sitter.Node, content []byte, result *astResult) {
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
+func collectFunctionDecls(root astNode, content []byte, result *astResult) {
+	walkAST(root, func(node astNode) {
+		if node.Type() != "function_declaration" {
+			return
+		}
+		nameNode := node.ChildByFieldName("name")
+		if nameNode == nil {
+			return
+		}
+		name := nodeContent(nameNode, content)
+		if name == "" {
+			return
+		}
+		result.FunctionDecls = append(result.FunctionDecls, name)
+		if _, exists := result.FunctionLines[name]; !exists {
+			result.FunctionLines[name] = int(nameNode.StartPoint().Row) + 1
+		}
+	})
+}
 
-	for {
-		node := cursor.CurrentNode()
-		if node.Type() == "function_declaration" {
-			nameNode := node.ChildByFieldName("name")
-			if nameNode != nil {
-				name := nodeContent(nameNode, content)
-				if name != "" {
-					result.FunctionDecls = append(result.FunctionDecls, name)
-					if _, exists := result.FunctionLines[name]; !exists {
-						result.FunctionLines[name] = int(nameNode.StartPoint().Row) + 1
-					}
+func collectVariableDecls(root astNode, content []byte, result *astResult) {
+	walkAST(root, func(node astNode) {
+		if node.Type() != "variable_declarator" {
+			return
+		}
+		nameNode := node.ChildByFieldName("name")
+		if nameNode == nil {
+			return
+		}
+		for _, name := range collectPatternNames(nameNode, content) {
+			if name != "" {
+				result.VariableDecls = append(result.VariableDecls, name)
+				if _, exists := result.VariableLines[name]; !exists {
+					result.VariableLines[name] = int(nameNode.StartPoint().Row) + 1
 				}
 			}
 		}
-
-		if cursor.GoToFirstChild() {
-			continue
-		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
-		}
-	}
+	})
 }
 
-func collectVariableDecls(root *sitter.Node, content []byte, result *astResult) {
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
-
-	for {
-		node := cursor.CurrentNode()
-		if node.Type() == "variable_declarator" {
-			nameNode := node.ChildByFieldName("name")
-			if nameNode != nil {
-				for _, name := range collectPatternNames(nameNode, content) {
-					if name != "" {
-						result.VariableDecls = append(result.VariableDecls, name)
-						if _, exists := result.VariableLines[name]; !exists {
-							result.VariableLines[name] = int(nameNode.StartPoint().Row) + 1
-						}
-					}
-				}
-			}
-		}
-
-		if cursor.GoToFirstChild() {
-			continue
-		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
-		}
-	}
-}
-
-func collectImportSpecs(root *sitter.Node, content []byte, result *astResult) {
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
-
-	for {
-		node := cursor.CurrentNode()
+func collectImportSpecs(root astNode, content []byte, result *astResult) {
+	walkAST(root, func(node astNode) {
 		switch node.Type() {
 		case "import_statement":
 			specs := parseImportStatement(node, content)
@@ -244,24 +249,11 @@ func collectImportSpecs(root *sitter.Node, content []byte, result *astResult) {
 				result.ImportSpecs = append(result.ImportSpecs, *spec)
 			}
 		}
-
-		if cursor.GoToFirstChild() {
-			continue
-		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
-		}
-	}
+	})
 }
 
-func collectExportSymbols(root *sitter.Node, content []byte, result *astResult) {
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
-
-	for {
-		node := cursor.CurrentNode()
+func collectExportSymbols(root astNode, content []byte, result *astResult) {
+	walkAST(root, func(node astNode) {
 		switch node.Type() {
 		case "export_statement", "export_named_declaration":
 			parsed := parseExportStatement(node, content)
@@ -304,19 +296,10 @@ func collectExportSymbols(root *sitter.Node, content []byte, result *astResult) 
 				}
 			}
 		}
-
-		if cursor.GoToFirstChild() {
-			continue
-		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
-		}
-	}
+	})
 }
 
-func parseImportStatement(node *sitter.Node, content []byte) []ImportSpec {
+func parseImportStatement(node astNode, content []byte) []ImportSpec {
 	if node == nil {
 		return nil
 	}
@@ -362,7 +345,7 @@ func parseImportStatement(node *sitter.Node, content []byte) []ImportSpec {
 	return specs
 }
 
-func parseImportClause(node *sitter.Node, content []byte, source string) []ImportSpec {
+func parseImportClause(node astNode, content []byte, source string) []ImportSpec {
 	if node == nil {
 		return nil
 	}
@@ -372,7 +355,7 @@ func parseImportClause(node *sitter.Node, content []byte, source string) []Impor
 		specs = append(specs, ImportSpec{Source: source, Names: []string{nodeContent(defaultNode, content)}, Wildcard: true})
 	}
 
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -392,12 +375,12 @@ func parseImportClause(node *sitter.Node, content []byte, source string) []Impor
 	return specs
 }
 
-func parseNamedImports(node *sitter.Node, content []byte) []string {
+func parseNamedImports(node astNode, content []byte) []string {
 	if node == nil {
 		return nil
 	}
 	names := []string{}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil || child.Type() != "import_specifier" {
 			continue
@@ -416,7 +399,7 @@ func parseNamedImports(node *sitter.Node, content []byte) []string {
 	return names
 }
 
-func parseRequireStatement(node *sitter.Node, content []byte) *ImportSpec {
+func parseRequireStatement(node astNode, content []byte) *ImportSpec {
 	if node == nil {
 		return nil
 	}
@@ -461,7 +444,7 @@ type exportParseResult struct {
 	Reexports []ImportSpec
 }
 
-func parseExportStatement(node *sitter.Node, content []byte) exportParseResult {
+func parseExportStatement(node astNode, content []byte) exportParseResult {
 	if node == nil {
 		return exportParseResult{}
 	}
@@ -514,17 +497,17 @@ func parseExportStatement(node *sitter.Node, content []byte) exportParseResult {
 	return exportParseResult{Symbols: results, Reexports: reexports}
 }
 
-func parseExportSpecifiers(clause *sitter.Node, content []byte, exportedNames bool) []string {
+func parseExportSpecifiers(clause astNode, content []byte, exportedNames bool) []string {
 	if clause == nil {
 		return nil
 	}
 	names := []string{}
-	for i := 0; i < int(clause.ChildCount()); i++ {
+	for i := 0; i < clause.ChildCount(); i++ {
 		child := clause.Child(i)
 		if child == nil || child.Type() != "export_specifier" {
 			continue
 		}
-		var nameNode *sitter.Node
+		var nameNode astNode
 		if exportedNames {
 			nameNode = child.ChildByFieldName("name")
 			if nameNode == nil {
@@ -546,12 +529,12 @@ func parseExportSpecifiers(clause *sitter.Node, content []byte, exportedNames bo
 	return names
 }
 
-func parseVarDeclarationNames(node *sitter.Node, content []byte) []string {
+func parseVarDeclarationNames(node astNode, content []byte) []string {
 	if node == nil {
 		return nil
 	}
 	names := []string{}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -566,7 +549,7 @@ func parseVarDeclarationNames(node *sitter.Node, content []byte) []string {
 	return names
 }
 
-func collectPatternNames(node *sitter.Node, content []byte) []string {
+func collectPatternNames(node astNode, content []byte) []string {
 	if node == nil {
 		return nil
 	}
@@ -584,7 +567,7 @@ func collectPatternNames(node *sitter.Node, content []byte) []string {
 	}
 
 	names := []string{}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -594,12 +577,12 @@ func collectPatternNames(node *sitter.Node, content []byte) []string {
 	return names
 }
 
-func parseObjectPattern(node *sitter.Node, content []byte) []string {
+func parseObjectPattern(node astNode, content []byte) []string {
 	if node == nil {
 		return nil
 	}
 	names := []string{}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -617,12 +600,12 @@ func parseObjectPattern(node *sitter.Node, content []byte) []string {
 	return names
 }
 
-func parseArrayPattern(node *sitter.Node, content []byte) []string {
+func parseArrayPattern(node astNode, content []byte) []string {
 	if node == nil {
 		return nil
 	}
 	names := []string{}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -632,11 +615,11 @@ func parseArrayPattern(node *sitter.Node, content []byte) []string {
 	return names
 }
 
-func firstStringChild(node *sitter.Node, content []byte) string {
+func firstStringChild(node astNode, content []byte) string {
 	if node == nil {
 		return ""
 	}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -648,14 +631,14 @@ func firstStringChild(node *sitter.Node, content []byte) string {
 	return ""
 }
 
-func findDescendant(node *sitter.Node, nodeType string) *sitter.Node {
+func findDescendant(node astNode, nodeType string) astNode {
 	if node == nil {
 		return nil
 	}
 	if node.Type() == nodeType {
 		return node
 	}
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := 0; i < node.ChildCount(); i++ {
 		child := node.Child(i)
 		if child == nil {
 			continue
@@ -671,31 +654,18 @@ func trimQuotes(value string) string {
 	return strings.Trim(value, "\"'`")
 }
 
-func collectFlagHits(root *sitter.Node, content []byte, result *astResult, flagPatterns []string) {
+func collectFlagHits(root astNode, content []byte, result *astResult, flagPatterns []string) {
 	regexes := compileRegexes(flagPatterns)
-	cursor := sitter.NewTreeCursor(root)
-	defer cursor.Close()
-
-	for {
-		node := cursor.CurrentNode()
+	walkAST(root, func(node astNode) {
 		if node.Type() == "member_expression" || node.Type() == "subscript_expression" {
 			if hit := parseFlagHit(node, content, regexes); hit != nil {
 				result.FlagHits = append(result.FlagHits, *hit)
 			}
 		}
-
-		if cursor.GoToFirstChild() {
-			continue
-		}
-		for !cursor.GoToNextSibling() {
-			if !cursor.GoToParent() {
-				return
-			}
-		}
-	}
+	})
 }
 
-func parseFlagHit(node *sitter.Node, content []byte, regexes []*regexp.Regexp) *FlagOccurrence {
+func parseFlagHit(node astNode, content []byte, regexes []*regexp.Regexp) *FlagOccurrence {
 	if node == nil {
 		return nil
 	}
@@ -729,7 +699,7 @@ func parseFlagHit(node *sitter.Node, content []byte, regexes []*regexp.Regexp) *
 	}
 }
 
-func nodeContent(node *sitter.Node, content []byte) string {
+func nodeContent(node astNode, content []byte) string {
 	if node == nil {
 		return ""
 	}
@@ -740,3 +710,23 @@ func nodeContent(node *sitter.Node, content []byte) string {
 	}
 	return string(content[start:end])
 }
+
+func walkAST(root astNode, visit func(astNode)) {
+	if root == nil {
+		return
+	}
+	stack := []astNode{root}
+	for len(stack) > 0 {
+		node := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		visit(node)
+		for i := node.ChildCount() - 1; i >= 0; i-- {
+			child := node.Child(i)
+			if child != nil {
+				stack = append(stack, child)
+			}
+		}
+	}
+}
+
+var _ astNode = (*tsNode)(nil)
