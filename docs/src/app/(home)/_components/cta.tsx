@@ -1,7 +1,7 @@
 import Section from "./section";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Download, Star, BookOpen } from "lucide-react";
+import { Download, Star, BookOpen, Heart } from "lucide-react";
 
 export default function CallToAction() {
   return (
@@ -27,6 +27,13 @@ export default function CallToAction() {
           <Button variant="outline" size="lg" className="w-full sm:w-auto">
             <BookOpen className="mr-2 h-5 w-5" />
             Read the Docs
+          </Button>
+        </Link>
+        {/* TODO: Add a link to the sponsor page */}
+        <Link href="/sponsor" className="w-full sm:w-auto">
+          <Button variant="outline" size="lg" className="w-full sm:w-auto">
+            <Heart className="mr-2 h-5 w-5" />
+            Sponsor
           </Button>
         </Link>
       </div>
