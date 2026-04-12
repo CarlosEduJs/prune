@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Download } from 'lucide-react';
 import { FaWindows, FaLinux, FaApple } from "react-icons/fa";
 import { SiReadthedocs } from "react-icons/si";
-import Terminal from "@/components/terminal";
 
 export default function Hero() {
   return (
