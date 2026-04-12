@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Hero from "./_components/hero";
 
 export default function HomePage() {
   return (
@@ -16,6 +17,7 @@ export default function HomePage() {
           Get Started
         </Button>
       </header>
+      <Hero />
     </div>
   );
 }
