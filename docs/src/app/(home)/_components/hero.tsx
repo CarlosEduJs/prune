@@ -25,7 +25,7 @@ export default function Hero() {
             </Button>
           </Link>
           <div className="flex items-center gap-2">
-            <h2 className="text-xs">Writed in Go, Compiled to a single binary</h2>
+            <h2 className="text-xs">Available on</h2>
             <FaWindows />
             <FaLinux />
             <FaApple />

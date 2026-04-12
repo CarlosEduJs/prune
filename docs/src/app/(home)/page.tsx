@@ -1,23 +1,31 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import Hero from "./_components/hero";
+import Navbar from "./_components/navbar";
+import Problem from "./_components/problem";
+import Solution from "./_components/solution";
+import HowItWorks from "./_components/how-it-works";
+import CodeExample from "./_components/code-example";
+import Features from "./_components/features";
+import WhyItsDifferent from "./_components/why-its-different";
+import BetaNotice from "./_components/beta-notice";
+import CallToAction from "./_components/cta";
+import Footer from "./_components/footer";
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col">
-      <header className="flex items-center justify-between px-12 py-6">
-        <h1 className="text-2xl font-bold">prune</h1>
-        <nav>
-          <ul className="flex gap-4 items-center">
-            <li><Link className="text-sm font-light" href="/">Home</Link></li>
-            <li><Link className="text-sm font-light" href="/docs">Docs</Link></li>
-          </ul>
-        </nav>
-        <Button variant={"outline"} size={"lg"}>
-          Get Started
-        </Button>
-      </header>
-      <Hero />
+    <div className="flex flex-col relative w-full">
+      <Navbar />
+      <main className="flex flex-col">
+        <Hero />
+        <Problem />
+        <Solution />
+        <HowItWorks />
+        <CodeExample />
+        <Features />
+        <WhyItsDifferent />
+        <BetaNotice />
+        <CallToAction />
+      </main>
+      <Footer />
     </div>
   );
 }
