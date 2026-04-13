@@ -18,14 +18,15 @@ func TestE2EScanOutputsFindings(t *testing.T) {
 	}
 
 	out := string(output)
-	if !strings.Contains(out, "unused_export") {
-		t.Fatalf("expected unused_export in output")
+	// unused.ts is detected as an unused_file, so individual findings are deduplicated.
+	if !strings.Contains(out, "unused file") {
+		t.Fatalf("expected 'unused file' in output, got:\n%s", out)
 	}
-	if !strings.Contains(out, "unused_function") {
-		t.Fatalf("expected unused_function in output")
+	if !strings.Contains(out, "unused function") {
+		t.Fatalf("expected 'unused function' in output, got:\n%s", out)
 	}
-	if !strings.Contains(out, "unused_variable") {
-		t.Fatalf("expected unused_variable in output")
+	if !strings.Contains(out, "unused export") {
+		t.Fatalf("expected 'unused export' in output, got:\n%s", out)
 	}
 }
 

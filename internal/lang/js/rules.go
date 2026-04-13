@@ -276,16 +276,18 @@ func isDefaultExportUsed(file string, data *Collected) bool {
 }
 
 func ruleDeadFeatureFlags(cfg *config.Config, data *Collected) []rules.Finding {
-	if !isRuleEnabled(cfg, "dead_feature_flag") {
+	ruleName := "possible_dynamic_usage"
+	legacyName := "dead_feature_flag"
+	if !isRuleEnabled(cfg, ruleName) && !isRuleEnabled(cfg, legacyName) {
 		return nil
 	}
 
 	findings := []rules.Finding{}
 	if len(data.FeatureFlagRefs) == 0 && len(cfg.FeatureFlags.Patterns) > 0 {
-		confidence := confidenceFor(cfg, "dead_feature_flag", "if_never_referenced", "safe")
+		confidence := confidenceFor(cfg, legacyName, "if_never_referenced", "review")
 		findings = append(findings, rules.Finding{
-			ID:         "dead_feature_flag:patterns",
-			Kind:       "dead_feature_flag",
+			ID:         "possible_dynamic_usage:patterns",
+			Kind:       "possible_dynamic_usage",
 			Confidence: confidence,
 			File:       "",
 			Line:       0,
@@ -299,19 +301,19 @@ func ruleDeadFeatureFlags(cfg *config.Config, data *Collected) []rules.Finding {
 			if data.FeatureFlagRefs[hit.Flag] > 0 {
 				continue
 			}
-			confidence := confidenceFor(cfg, "dead_feature_flag", "if_never_referenced", "safe")
+			confidence := confidenceFor(cfg, legacyName, "if_never_referenced", "review")
 			line := hit.Line
 			if line == 0 {
 				line = 1
 			}
 			findings = append(findings, rules.Finding{
-				ID:         "dead_feature_flag:" + file + ":" + hit.Flag,
-				Kind:       "dead_feature_flag",
+				ID:         "possible_dynamic_usage:" + file + ":" + hit.Flag,
+				Kind:       "possible_dynamic_usage",
 				Confidence: confidence,
 				File:       file,
 				Line:       line,
 				Symbol:     hit.Flag,
-				Reason:     "feature flag never referenced",
+				Reason:     "feature flag patterns detected — verify usage",
 			})
 		}
 	}

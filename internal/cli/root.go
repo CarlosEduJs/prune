@@ -18,6 +18,9 @@ type rootOptions struct {
 	failOnFindings bool
 	stream         bool
 	streamInterval int
+	compact        bool
+	only           string
+	deletable      bool
 }
 
 type stringSlice []string
@@ -70,10 +73,13 @@ Commands:
 
 func parseRootFlags(fs *flag.FlagSet, opts *rootOptions) {
 	fs.StringVar(&opts.configPath, "config", "prune.yaml", "Path to prune config")
-	fs.StringVar(&opts.format, "format", "table", "Output format: table or json")
+	fs.StringVar(&opts.format, "format", "pretty", "Output format: pretty, json, or ndjson")
 	fs.StringVar(&opts.minConfidence, "min-confidence", "safe", "Minimum confidence to report")
 	fs.Var(&opts.paths, "paths", "Paths to scan (repeatable)")
 	fs.BoolVar(&opts.failOnFindings, "fail-on-findings", false, "Exit with error if findings are found")
 	fs.BoolVar(&opts.stream, "stream", false, "Enable streaming mode with partial results")
 	fs.IntVar(&opts.streamInterval, "stream-interval", 250, "Interval in ms between stream flushes")
+	fs.BoolVar(&opts.compact, "compact", false, "Show only summary counts")
+	fs.StringVar(&opts.only, "only", "", "Show only findings with this confidence (safe, review, likely_dead)")
+	fs.BoolVar(&opts.deletable, "deletable", false, "Show only files that are safe to delete")
 }
