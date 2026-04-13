@@ -15,6 +15,7 @@ Prune identifies unreachable code by building a dependency graph from defined en
     - Unused exports (symbols exported but never imported).
     - Unused functions and variables.
     - Suspicious dynamic code usage (e.g., `eval`, `Function`).
+- Human-friendly CLI output format grouped by file (`pretty`).
 - Machine-readable output (JSON, NDJSON) for automation.
 - **Streaming mode** for partial results in real-time.
 - CI/CD integration via exit codes and finding thresholds.
@@ -69,7 +70,7 @@ prune scan
 
 Flags:
 - `--config`: Path to the configuration file (default: `prune.yaml`).
-- `--format`: Output format: `table`, `json`, or `ndjson`.
+- `--format`: Output format: `pretty`, `json`, `ndjson`, or `table` (alias for `pretty`).
 - `--min-confidence`: Minimum confidence level to report (`safe`, `likely_dead`, `review`).
 - `--fail-on-findings`: Exit with a non-zero status code if problems are detected.
 - `--stream`: Enable streaming mode for partial results in real-time.
@@ -133,7 +134,7 @@ rules:
   unused_export:
     enabled: true
 report:
-  format: table
+  format: pretty
   min_confidence: safe
 ```
 

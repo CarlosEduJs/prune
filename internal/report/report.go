@@ -10,7 +10,7 @@ import (
 	"prune/internal/rules"
 )
 
-var version = "0.0.3"
+var version = "0.1.0-beta.1"
 
 type FormatterOptions struct {
 	Duration  time.Duration
