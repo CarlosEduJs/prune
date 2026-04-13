@@ -76,6 +76,49 @@ Flags:
 - `--stream`: Enable streaming mode for partial results in real-time.
 - `--stream-interval`: Interval in ms between stream flushes (default: 250ms).
 
+
+Pretty Output
+
+```bash
+Prune v0.1.0-beta.1 — 11 issues found in 9ms
+
+✔ SAFE (1)
+
+  utils/unused.ts
+  └─ unused file: unused.ts
+
+⚠ REVIEW (10)
+
+  components/Dashboard.tsx
+  └─ possible dynamic usage: user.name
+  └─ possible dynamic usage: user.email
+
+  main.ts
+  └─ possible dynamic usage: console.log
+  └─ possible dynamic usage: db.save
+  └─ possible dynamic usage: bootstrap().catch
+  └─ possible dynamic usage: console.error
+
+  services/db.ts
+  └─ possible dynamic usage: this.items.push
+  └─ possible dynamic usage: this.items
+  └─ possible dynamic usage: this.items.find
+  └─ possible dynamic usage: i.id
+
+─────────────────────────────────
+Summary
+
+  Files        1
+  Dynamic      10
+
+  SAFE         1
+  REVIEW       10
+
+  Total        11
+
+Done in 9ms
+```
+
 ### Streaming Mode
 
 For large projects, you can use streaming mode to receive results incrementally:
