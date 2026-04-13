@@ -1,0 +1,14 @@
+{
+  "title": "Prune",
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "cli-reference",
+    "configuration",
+    "how-it-works",
+    "output-format",
+    "ci-cd-integration",
+    "limitations"
+  ]
+}

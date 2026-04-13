@@ -1,0 +1,169 @@
+---
+title: How It Works
+description: Architecture and analysis pipeline — from file collection to reported findings.
+icon: Workflow
+---
+
+Prune's analysis pipeline has four distinct stages: file collection, AST parsing and data collection, rule application, and output formatting. Each stage is implemented as a separate internal package.
+
+---
+
+## Overview
+
+```
+prune.yaml
+    │
+    ▼
+scan.Collect()          ← walks filesystem, applies include/exclude globs
+    │
+    ▼
+js.Collector.Collect()  ← reads each file, runs Tree-sitter, extracts AST data
+    │
+    ▼
+js.applyRules()         ← correlates definitions and imports, emits findings
+    │
+    ▼
+report.Formatter        ← formats findings as table, JSON, or NDJSON
+```
+
+---
+
+## Stage 1 — File Collection (`internal/scan`)
+
+The `scan` package is responsible for discovering which files to analyze. It accepts a `Config` and returns a list of `FileEntry` values, each containing an absolute path (`Path`) and a path relative to the scan root (`Rel`).
+
+File collection works as follows:
+
+1. For each directory in `scan.paths`, Prune calls `filepath.WalkDir`.
+2. Each directory encountered is checked against `scan.exclude` patterns. If matched, the entire directory is skipped via `filepath.SkipDir`.
+3. Each file is checked against `scan.include` patterns. Files not matching any include pattern are skipped.
+4. Files matching any `scan.exclude` pattern are skipped even if they also match an include pattern.
+
+Pattern matching uses the [doublestar](https://github.com/bmatcuk/doublestar) library, which supports `**` for recursive matching.
+
+The relative path (`Rel`) is computed from the scan root and normalized to use forward slashes on all platforms. This relative path is used as the canonical identifier for files throughout the rest of the analysis.
+
+---
+
+## Stage 2 — AST Parsing and Data Collection (`internal/lang/js`)
+
+The `Collector` struct processes each `FileEntry` and builds a unified data model (`Collected`) that the rule engine reads.
+
+### Tree-sitter Grammars
+
+Prune uses [go-tree-sitter](https://github.com/smacker/go-tree-sitter) to parse source files into concrete syntax trees. The grammar is selected based on the file extension:
+
+| Extension | Grammar |
+|---|---|
+| `.js`, `.jsx` | JavaScript |
+| `.ts` | TypeScript |
+| `.tsx` | TSX |
+
+Files with any other extension are skipped by the AST parser. If parsing fails or the root node has syntax errors, Prune falls back to regex-based extraction for that file.
+
+### Data Extracted Per File
+
+The collector runs multiple AST traversal passes over each file's concrete syntax tree:
+
+| Data | How It's Extracted |
+|---|---|
+| **Function declarations** | `function_declaration` nodes; the `name` field child gives the declared name |
+| **Variable declarations** | `variable_declarator` nodes; the `name` field child gives the declared name, handling destructuring patterns |
+| **Import statements** | `import_statement` nodes (ES module `import`), plus `require()` calls detected via `lexical_declaration` → `call_expression` |
+| **Export statements** | `export_statement`, `export_named_declaration`, and `export_default_declaration` nodes |
+| **Identifier references** | All `identifier` nodes (total occurrences), separated into declarations and non-declaration usages |
+| **Feature flag accesses** | `member_expression` and `subscript_expression` nodes matching `feature_flags.patterns` regexes |
+| **Dynamic indicators** | String presence checks for `eval`, `Function`, `require`, `import(` (or custom patterns from `suspicious_dynamic_usage.patterns`) |
+
+The AST traversal is implemented as an iterative depth-first walk using an explicit stack to avoid recursion limits on large files.
+
+### Import Resolution
+
+After extracting import specs, Prune resolves relative imports (those starting with `./` or `../`) to actual files in the file index. Resolution attempts the following in order:
+
+1. Exact match of the resolved path
+2. Resolved path with `.ts`, `.tsx`, `.js`, `.jsx` appended
+3. Resolved path joined with `/index.ts`, `/index.tsx`, `/index.js`, `/index.jsx`
+
+Absolute imports (e.g., `import React from 'react'`, `import { foo } from '@/lib/utils'`) are not resolved — they are treated as external and excluded from dead code analysis.
+
+### Regex Fallback
+
+Before Tree-sitter runs on each file, Prune extracts imports, exports, function declarations, and variable declarations using regular expressions. If Tree-sitter succeeds, the AST results merge with and override the regex results. This fallback ensures partial data is available even for files with syntax errors.
+
+---
+
+## Stage 3 — Rule Application (`internal/lang/js/rules.go`)
+
+Rules operate on the `Collected` data structure built in Stage 2. They are applied in order:
+
+1. `ruleUnusedFiles`
+2. `ruleUnusedExports`
+3. `ruleUnusedSymbols` (covers both `unused_function` and `unused_variable`)
+4. `ruleDeadFeatureFlags`
+5. `ruleSuspiciousDynamic`
+
+### `unused_file` Rule
+
+A file is considered unreferenced if:
+- Its relative path is not present in any resolved import list across all files
+- Its relative path does not match any `entrypoints.files` exact path
+- Its relative path does not match any `entrypoints.patterns` glob
+
+### `unused_export` Rule
+
+For each file, Prune builds a map of which symbols are imported from it (using the resolved import specs). A symbol exported from a file is considered unused if:
+- No file imports it by name
+- No file imports it via wildcard (`import *`)
+- No file imports it as a side-effect-only import (which marks all exports as potentially used)
+
+If the exporting file is itself an entrypoint, the finding is assigned the `if_entrypoint` confidence instead of `if_not_imported`.
+
+### `unused_function` and `unused_variable` Rules
+
+A declared symbol (function or variable) is considered unused in its file if:
+- Its **usage count** (non-declaration identifier references within the same file) is zero
+- Its **total identifier count** is 1 or less (meaning it only appears once — at the declaration site)
+- If the symbol is exported: it is not imported by any other file, and no wildcard import covers its file
+
+If the file contains dynamic indicators (`eval`, `require`, `import(`, etc.), the confidence is downgraded to `if_dynamic_usage` because static analysis cannot rule out dynamic access.
+
+### `dead_feature_flag` Rule
+
+Feature flag detection finds `member_expression` nodes matching the patterns defined in `feature_flags.patterns` (e.g., `flags.DARK_MODE`). A flag is considered dead if the number of references to it across all files is zero. If no flag references are found at all (but patterns are configured), a single finding is emitted for the pattern set itself.
+
+### `suspicious_dynamic_usage` Rule
+
+For each file, Prune checks whether the raw source string contains any of the patterns defined in `rules.suspicious_dynamic_usage.patterns`. If a match is found, a `suspicious_dynamic_usage` finding is emitted for each matching indicator.
+
+### Confidence Levels
+
+Every finding is assigned one of three confidence levels:
+
+| Level | Meaning |
+|---|---|
+| `safe` | High confidence the code is dead. Safe to investigate for deletion. |
+| `likely_dead` | Likely dead but warrants verification, e.g., for exported functions. |
+| `review` | Low certainty — dynamic usage, entrypoint exports, or other ambiguity reduces confidence. |
+
+Confidence values are configurable per rule in `prune.yaml`. The defaults are set in `internal/config/default.go`.
+
+---
+
+## Stage 4 — Output Formatting (`internal/report`)
+
+After rules produce a `[]rules.Finding` slice, findings are filtered by confidence using `FilterByConfidence`, then formatted by the selected `Formatter`.
+
+Three formatters are available:
+
+- **`tableFormatter`**: Writes a tab-aligned table to stdout using Go's `text/tabwriter`. Columns are `CONFIDENCE`, `KIND`, `FILE`, `LINE`, `SYMBOL`, `REASON`. Appends scan duration when used.
+- **`jsonFormatter`**: Marshals the entire findings slice as a pretty-printed JSON array.
+- **`ndjsonFormatter`**: Marshals each finding as an individual JSON object on its own line (newline-delimited JSON). Used for streaming output.
+
+---
+
+## Streaming Mode
+
+When `--stream` is enabled, `AnalyzeStreaming` replaces the standard `Analyze` call. Files are batched in groups of up to 50 and emitted to a channel. The main goroutine processes each batch through the collector and rule engine as they arrive. If the format is `ndjson`, findings from each batch are written to stdout immediately via the stream handler.
+
+This allows `prune scan --stream --format ndjson` to begin printing results before all files have been analyzed, which is useful for large codebases or pipelines that consume the output incrementally.

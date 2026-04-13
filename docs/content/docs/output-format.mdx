@@ -1,0 +1,163 @@
+---
+title: Output Format
+description: Describes the three output formats — table, JSON, and NDJSON — and the Finding data structure.
+icon: FileText
+---
+
+Prune supports three output formats, selected via `--format` on the CLI or `report.format` in `prune.yaml`.
+
+---
+
+## Finding Structure
+
+Every finding has the following fields, regardless of format:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier for the finding. Format: `<kind>:<file>:<symbol>` |
+| `kind` | string | Rule that produced the finding (e.g., `unused_file`, `unused_export`) |
+| `confidence` | string | Confidence level: `safe`, `likely_dead`, or `review` |
+| `file` | string | Relative path to the file containing the finding. Empty string for file-independent findings |
+| `line` | int | Line number where the symbol is declared. `1` when the exact line is unavailable |
+| `symbol` | string | Name of the affected symbol or file basename |
+| `reason` | string | Human-readable explanation of why the finding was emitted |
+| `evidence` | object | Optional additional context (reserved; currently omitted from output) |
+
+---
+
+## Table Format
+
+The default format. Outputs a tab-aligned table to stdout using fixed-width columns.
+
+```bash
+prune scan
+prune scan --format table
+```
+
+**Example output:**
+
+```
+CONFIDENCE    KIND                       FILE                              LINE   SYMBOL              REASON
+SAFE          unused_file                src/utils/legacy.ts               1      legacy.ts           file is not referenced by any import
+SAFE          unused_export              src/components/Button.tsx         42     OldButtonVariant    exported symbol is never imported
+LIKELY_DEAD   unused_function            src/lib/helpers.ts                18     formatDeprecated    function declared but never referenced
+REVIEW        suspicious_dynamic_usage   src/loader.ts                     1      require             dynamic usage may hide references
+
+Scan finished in 340ms
+```
+
+When no findings match the confidence filter:
+
+```
+✨ No dead code found!
+
+Scan finished in 280ms
+```
+
+**Column details:**
+
+- `CONFIDENCE`: Uppercase confidence level
+- `KIND`: Rule identifier
+- `FILE`: Relative path to the file, or `-` if not file-specific
+- `LINE`: Declaration line number
+- `SYMBOL`: Identifier or file basename
+- `REASON`: Short description from the rule
+
+The scan duration line is printed only in table format, not in JSON or NDJSON mode.
+
+---
+
+## JSON Format
+
+Outputs the full findings list as a pretty-printed JSON array. Useful for programmatic processing of complete results.
+
+```bash
+prune scan --format json
+```
+
+**Example output:**
+
+```json
+[
+  {
+    "id": "unused_file:src/utils/legacy.ts",
+    "kind": "unused_file",
+    "confidence": "safe",
+    "file": "src/utils/legacy.ts",
+    "line": 1,
+    "symbol": "legacy.ts",
+    "reason": "file is not referenced by any import"
+  },
+  {
+    "id": "unused_export:src/components/Button.tsx:OldButtonVariant",
+    "kind": "unused_export",
+    "confidence": "safe",
+    "file": "src/components/Button.tsx",
+    "line": 42,
+    "symbol": "OldButtonVariant",
+    "reason": "exported symbol is never imported"
+  },
+  {
+    "id": "unused_function:src/lib/helpers.ts:formatDeprecated",
+    "kind": "unused_function",
+    "confidence": "likely_dead",
+    "file": "src/lib/helpers.ts",
+    "line": 18,
+    "symbol": "formatDeprecated",
+    "reason": "function declared but never referenced"
+  }
+]
+```
+
+When no findings match the filter, an empty JSON array is returned:
+
+```json
+[]
+```
+
+---
+
+## NDJSON Format
+
+Outputs one JSON object per line (newline-delimited JSON). Each object follows the same schema as the JSON format. This is the standard format for streaming mode.
+
+```bash
+prune scan --format ndjson
+prune scan --stream --format ndjson
+```
+
+**Example output:**
+
+```
+{"id":"unused_file:src/utils/legacy.ts","kind":"unused_file","confidence":"safe","file":"src/utils/legacy.ts","line":1,"symbol":"legacy.ts","reason":"file is not referenced by any import"}
+{"id":"unused_export:src/components/Button.tsx:OldButtonVariant","kind":"unused_export","confidence":"safe","file":"src/components/Button.tsx","line":42,"symbol":"OldButtonVariant","reason":"exported symbol is never imported"}
+{"id":"unused_function:src/lib/helpers.ts:formatDeprecated","kind":"unused_function","confidence":"likely_dead","file":"src/lib/helpers.ts","line":18,"symbol":"formatDeprecated","reason":"function declared but never referenced"}
+```
+
+NDJSON is the only format supported by streaming mode. When `--stream` is enabled and `--format json` is specified, the format is automatically promoted to `ndjson`.
+
+For tools that consume NDJSON, you can pipe output directly to processors like `jq`:
+
+```bash
+prune scan --format ndjson | jq 'select(.confidence == "safe") | .file'
+```
+
+---
+
+## Filtering by Confidence
+
+Regardless of format, findings below the `--min-confidence` threshold are excluded before output. The confidence ranking is:
+
+| Level | Rank |
+|---|---|
+| `safe` | 1 (lowest — most confident) |
+| `likely_dead` | 2 |
+| `review` | 3 (highest — least certain) |
+
+`--min-confidence safe` (the default) includes all findings.  
+`--min-confidence likely_dead` excludes `safe`-level findings.  
+`--min-confidence review` includes only `review`-level findings.
+
+<Callout type="warn">
+The ranking is counter-intuitive: `safe` findings are the most certain candidates for deletion, but have the lowest rank. A higher `--min-confidence` value means more uncertain findings.
+</Callout>
