@@ -367,8 +367,43 @@ func buildEntrypointSet(cfg *config.Config) map[string]bool {
 	if cfg == nil {
 		return set
 	}
+
+	scanPaths := cfg.Scan.Paths
+	if len(scanPaths) == 0 {
+		scanPaths = []string{"."}
+	}
+
 	for _, file := range cfg.Entrypoints.Files {
-		set[filepath.ToSlash(file)] = true
+		entry := filepath.ToSlash(file)
+		set[entry] = true
+
+		absEntry, err := filepath.Abs(entry)
+		if err == nil {
+			absEntry = filepath.ToSlash(absEntry)
+			set[absEntry] = true
+		}
+
+		for _, scanPath := range scanPaths {
+			absScanPath, err := filepath.Abs(scanPath)
+			if err != nil {
+				continue
+			}
+			absScanPath = filepath.ToSlash(absScanPath)
+
+			relPath, err := filepath.Rel(absScanPath, absEntry)
+			if err == nil {
+				relPath = filepath.ToSlash(relPath)
+				set[relPath] = true
+			}
+
+			if !strings.Contains(entry, "/") {
+				entryBase := filepath.Base(entry)
+				scanBase := filepath.Base(scanPath)
+				if entryBase == scanBase {
+					set[entry] = true
+				}
+			}
+		}
 	}
 	for _, pattern := range cfg.Entrypoints.Patterns {
 		set[filepath.ToSlash(pattern)] = true
