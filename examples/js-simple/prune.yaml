@@ -19,7 +19,7 @@ scan:
         - coverage/**
 entrypoints:
     files:
-        - src/index.ts
+        - src/index.js
         - src/main.tsx
     patterns:
         - src/pages/**
