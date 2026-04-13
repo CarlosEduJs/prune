@@ -29,8 +29,7 @@ export default function CallToAction() {
             Read the Docs
           </Button>
         </Link>
-        {/* TODO: Add a link to the sponsor page */}
-        <Link href="/sponsor" className="w-full sm:w-auto">
+        <Link href="https://github.com/sponsors/CarlosEduJs" className="w-full sm:w-auto">
           <Button variant="outline" size="lg" className="w-full sm:w-auto">
             <Heart className="mr-2 h-5 w-5" />
             Sponsor
