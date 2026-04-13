@@ -1,8 +1,8 @@
-import { getPageImage, source } from '@/lib/source';
+import { source } from '@/lib/source';
 import { notFound } from 'next/navigation';
+import { generate as MetadataImage, getImageResponseOptions } from './image';
 import { ImageResponse } from '@takumi-rs/image-response';
-import { generate as DefaultImage } from 'fumadocs-ui/og/takumi';
-import { appName } from '@/lib/shared';
+import { getPageImage } from '@/lib/source';
 
 export const revalidate = false;
 
@@ -12,18 +12,15 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
   if (!page) notFound();
 
   return new ImageResponse(
-    <DefaultImage title={page.data.title} description={page.data.description} site={appName} />,
-    {
-      width: 1200,
-      height: 630,
-      format: 'webp',
-    },
+    <MetadataImage title={page.data.title} description={page.data.description} />,
+    await getImageResponseOptions(),
   );
 }
 
-export function generateStaticParams() {
+export function generateStaticParams(): {
+  slug: string[];
+}[] {
   return source.getPages().map((page) => ({
-    lang: page.locale,
     slug: getPageImage(page).segments,
   }));
 }

@@ -8,7 +8,7 @@ export default function BetaNotice() {
           We are in Beta
         </h2>
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Prune is in active development and already handling real-world codebases. You may encounter edge cases with dynamic imports or unconventional patterns.
+          Prune is under active development and you can already use it in your codebases. You may encounter edge cases with dynamic imports or unconventional patterns. 
         </p>
         <p className="text-lg text-muted-foreground leading-relaxed">
           We’re looking for early adopters to help refine the engine. Found a false positive? Have an idea? We want your feedback.
