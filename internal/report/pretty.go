@@ -18,7 +18,7 @@ var kindLabels = map[string]string{
 	"unused_function":          "unused function",
 	"unused_variable":          "unused variable",
 	"suspicious_dynamic_usage": "suspicious dynamic usage",
-	"dead_feature_flag":        "dead feature flag",
+	"possible_dynamic_usage":   "possible dynamic usage",
 }
 
 var confidenceLabels = map[string]string{
@@ -49,8 +49,27 @@ var confidenceIcons = map[string]string{
 	"review":      "⚠",
 }
 
+var classificationRules = map[string]string{
+	"unused_file":              "safe",
+	"unused_export":            "safe",
+	"unused_function":          "likely_dead",
+	"possible_dynamic_usage":   "review",
+	"suspicious_dynamic_usage": "review",
+}
+
 type prettyFormatter struct {
 	opts FormatterOptions
+}
+
+func normalizeClassification(findings []rules.Finding) []rules.Finding {
+	result := make([]rules.Finding, len(findings))
+	copy(result, findings)
+	for i := range result {
+		if override, ok := classificationRules[result[i].Kind]; ok {
+			result[i].Confidence = override
+		}
+	}
+	return result
 }
 
 func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
@@ -89,6 +108,7 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 	}
 
 	findings = deduplicateUnusedFiles(findings)
+	findings = normalizeClassification(findings)
 
 	b.WriteString(f.header(len(findings), useColor))
 	b.WriteString("\n")
@@ -172,18 +192,17 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 func (f prettyFormatter) header(count int, useColor bool) string {
 	var b strings.Builder
 	ver := "v" + version
-	if useColor {
-		b.WriteString(fmt.Sprintf("%s%sPrune %s%s\n", colorBold, colorCyan, ver, colorReset))
-	} else {
-		b.WriteString(fmt.Sprintf("Prune %s\n", ver))
-	}
-
 	noun := "issues"
 	if count == 1 {
 		noun = "issue"
 	}
 	dur := f.opts.Duration.Round(time.Millisecond)
-	b.WriteString(fmt.Sprintf("Found %d %s in %s\n", count, noun, dur))
+
+	if useColor {
+		b.WriteString(fmt.Sprintf("%s%sPrune %s%s — %d %s found in %s\n", colorBold, colorCyan, ver, colorReset, count, noun, dur))
+	} else {
+		b.WriteString(fmt.Sprintf("Prune %s — %d %s found in %s\n", ver, count, noun, dur))
+	}
 	return b.String()
 }
 
@@ -215,6 +234,8 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 		{"unused_export", "Exports"},
 		{"unused_function", "Functions"},
 		{"unused_variable", "Variables"},
+		{"possible_dynamic_usage", "Dynamic"},
+		{"suspicious_dynamic_usage", "Suspicious"},
 	}
 	for _, t := range typeOrder {
 		if c, ok := typeCounts[t.key]; ok && c > 0 {
@@ -240,6 +261,9 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 	}
 
 	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("  Total        %d\n", len(findings)))
+	b.WriteString("\n")
+
 	dur := f.opts.Duration.Round(time.Millisecond)
 	if useColor {
 		b.WriteString(fmt.Sprintf("%sDone in %s%s\n", colorDim, dur, colorReset))

@@ -114,11 +114,11 @@ func TestPrettyFormatterMissingFile(t *testing.T) {
 	if err != nil || formatter == nil {
 		t.Fatalf("missing pretty formatter, err: %v", err)
 	}
-	data, err := formatter.Format([]rules.Finding{{Confidence: "safe", Kind: "dead_feature_flag"}})
+	data, err := formatter.Format([]rules.Finding{{Confidence: "review", Kind: "possible_dynamic_usage"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(string(data), "SAFE") {
-		t.Fatalf("expected SAFE section in output")
+	if !strings.Contains(string(data), "REVIEW") {
+		t.Fatalf("expected REVIEW section in output")
 	}
 }

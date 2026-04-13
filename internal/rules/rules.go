@@ -22,7 +22,7 @@ func All() []RuleDefinition {
 		{ID: "unused_variable", Description: "Variable declared but never used"},
 		{ID: "unused_export", Description: "Exported symbol never imported"},
 		{ID: "unused_file", Description: "File never imported or referenced"},
-		{ID: "dead_feature_flag", Description: "Feature flag with dead code"},
+		{ID: "possible_dynamic_usage", Description: "Possible dynamic usage detected via pattern match"},
 		{ID: "suspicious_dynamic_usage", Description: "Dynamic usage that blocks certainty"},
 	}
 }

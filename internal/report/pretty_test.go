@@ -31,16 +31,50 @@ func TestDeduplicateUnusedFiles(t *testing.T) {
 func TestGroupByConfidence(t *testing.T) {
 	findings := []rules.Finding{
 		{Confidence: "safe", File: "a.js", Kind: "unused_export"},
-		{Confidence: "safe", File: "b.js", Kind: "unused_function"},
+		{Confidence: "likely_dead", File: "b.js", Kind: "unused_function"},
 		{Confidence: "review", File: "c.js", Kind: "suspicious_dynamic_usage"},
 	}
 
 	grouped := groupByConfidence(findings)
-	if len(grouped["safe"]) != 2 {
-		t.Fatalf("expected 2 files in safe group, got %d", len(grouped["safe"]))
+	if len(grouped["safe"]) != 1 {
+		t.Fatalf("expected 1 file in safe group, got %d", len(grouped["safe"]))
+	}
+	if len(grouped["likely_dead"]) != 1 {
+		t.Fatalf("expected 1 file in likely_dead group, got %d", len(grouped["likely_dead"]))
 	}
 	if len(grouped["review"]) != 1 {
 		t.Fatalf("expected 1 file in review group, got %d", len(grouped["review"]))
+	}
+}
+
+func TestNormalizeClassification(t *testing.T) {
+	findings := []rules.Finding{
+		{Kind: "unused_file", Confidence: "review"},
+		{Kind: "unused_export", Confidence: "review"},
+		{Kind: "unused_function", Confidence: "safe"},
+		{Kind: "possible_dynamic_usage", Confidence: "safe"},
+		{Kind: "suspicious_dynamic_usage", Confidence: "safe"},
+		{Kind: "unused_variable", Confidence: "safe"},
+	}
+
+	result := normalizeClassification(findings)
+
+	tests := []struct {
+		kind     string
+		expected string
+	}{
+		{"unused_file", "safe"},
+		{"unused_export", "safe"},
+		{"unused_function", "likely_dead"},
+		{"possible_dynamic_usage", "review"},
+		{"suspicious_dynamic_usage", "review"},
+		{"unused_variable", "safe"}, // unused_variable retains original
+	}
+
+	for i, tt := range tests {
+		if result[i].Confidence != tt.expected {
+			t.Fatalf("kind %s: expected confidence %q, got %q", tt.kind, tt.expected, result[i].Confidence)
+		}
 	}
 }
 
@@ -55,7 +89,7 @@ func TestPrettyCompactMode(t *testing.T) {
 
 	findings := []rules.Finding{
 		{Confidence: "safe", Kind: "unused_export", File: "a.js", Symbol: "x"},
-		{Confidence: "safe", Kind: "unused_function", File: "b.js", Symbol: "y"},
+		{Confidence: "likely_dead", Kind: "unused_function", File: "b.js", Symbol: "y"},
 		{Confidence: "review", Kind: "suspicious_dynamic_usage", File: "c.js", Symbol: "z"},
 	}
 
@@ -146,6 +180,7 @@ func TestPrettyGroupingOrder(t *testing.T) {
 	findings := []rules.Finding{
 		{Confidence: "review", Kind: "suspicious_dynamic_usage", File: "z.js", Symbol: "a"},
 		{Confidence: "safe", Kind: "unused_export", File: "b.js", Symbol: "x"},
+		// unused_function will be normalized to likely_dead
 		{Confidence: "safe", Kind: "unused_function", File: "a.js", Symbol: "y"},
 	}
 
@@ -156,21 +191,104 @@ func TestPrettyGroupingOrder(t *testing.T) {
 
 	output := string(data)
 	safeIdx := strings.Index(output, "SAFE")
+	likelyDeadIdx := strings.Index(output, "LIKELY DEAD")
 	reviewIdx := strings.Index(output, "REVIEW")
-	if safeIdx == -1 || reviewIdx == -1 {
-		t.Fatalf("expected both SAFE and REVIEW sections, got: %s", output)
+	if safeIdx == -1 || likelyDeadIdx == -1 || reviewIdx == -1 {
+		t.Fatalf("expected SAFE, LIKELY DEAD, and REVIEW sections, got: %s", output)
 	}
-	if safeIdx > reviewIdx {
-		t.Fatalf("SAFE should appear before REVIEW, got: %s", output)
+	if safeIdx > likelyDeadIdx {
+		t.Fatalf("SAFE should appear before LIKELY DEAD, got: %s", output)
+	}
+	if likelyDeadIdx > reviewIdx {
+		t.Fatalf("LIKELY DEAD should appear before REVIEW, got: %s", output)
+	}
+}
+
+func TestPrettyHeaderFormat(t *testing.T) {
+	formatter, err := NewFormatter("pretty", FormatterOptions{
+		Duration: 42 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Inside SAFE section, files should be sorted alphabetically.
-	aIdx := strings.Index(output, "a.js")
-	bIdx := strings.Index(output, "b.js")
-	if aIdx == -1 || bIdx == -1 {
-		t.Fatalf("expected both a.js and b.js, got: %s", output)
+	findings := []rules.Finding{
+		{Confidence: "safe", Kind: "unused_export", File: "a.js", Symbol: "x"},
+		{Confidence: "safe", Kind: "unused_export", File: "b.js", Symbol: "y"},
 	}
-	if aIdx > bIdx {
-		t.Fatalf("a.js should appear before b.js, got: %s", output)
+
+	data, err := formatter.Format(findings)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := string(data)
+	// Should contain the new single-line header format with em dash
+	if !strings.Contains(output, "—") {
+		t.Fatalf("expected em dash in header, got: %s", output)
+	}
+	if !strings.Contains(output, "2 issues found in") {
+		t.Fatalf("expected '2 issues found in' in header, got: %s", output)
+	}
+}
+
+func TestPrettySummaryIncludesTotal(t *testing.T) {
+	formatter, err := NewFormatter("pretty", FormatterOptions{
+		Duration: 5 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	findings := []rules.Finding{
+		{Confidence: "safe", Kind: "unused_export", File: "a.js", Symbol: "x"},
+		{Confidence: "safe", Kind: "unused_file", File: "b.js"},
+		{Confidence: "review", Kind: "suspicious_dynamic_usage", File: "c.js", Symbol: "eval"},
+	}
+
+	data, err := formatter.Format(findings)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := string(data)
+	if !strings.Contains(output, "Total") {
+		t.Fatalf("expected Total in summary, got: %s", output)
+	}
+	if !strings.Contains(output, "Files") {
+		t.Fatalf("expected Files count in summary, got: %s", output)
+	}
+	if !strings.Contains(output, "Exports") {
+		t.Fatalf("expected Exports count in summary, got: %s", output)
+	}
+}
+
+func TestPossibleDynamicUsageIsReview(t *testing.T) {
+	formatter, err := NewFormatter("pretty", FormatterOptions{
+		Duration: 5 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	findings := []rules.Finding{
+		{Confidence: "safe", Kind: "possible_dynamic_usage", File: "a.js", Symbol: "console.log"},
+	}
+
+	data, err := formatter.Format(findings)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := string(data)
+	// possible_dynamic_usage must be normalized to REVIEW, never SAFE
+	if strings.Contains(output, "SAFE") {
+		t.Fatalf("possible_dynamic_usage should NOT be in SAFE, got: %s", output)
+	}
+	if !strings.Contains(output, "REVIEW") {
+		t.Fatalf("expected possible_dynamic_usage in REVIEW section, got: %s", output)
+	}
+	if !strings.Contains(output, "possible dynamic usage: console.log") {
+		t.Fatalf("expected label 'possible dynamic usage: console.log', got: %s", output)
 	}
 }

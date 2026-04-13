@@ -24,7 +24,7 @@ func TestAllRulesIncludesExpected(t *testing.T) {
 		"unused_variable":          false,
 		"unused_export":            false,
 		"unused_file":              false,
-		"dead_feature_flag":        false,
+		"possible_dynamic_usage":   false,
 		"suspicious_dynamic_usage": false,
 	}
 
