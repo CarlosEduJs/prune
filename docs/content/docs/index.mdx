@@ -22,7 +22,7 @@ Prune traces the dependency graph starting from your configured entrypoints and 
 | `unused_export` | An exported symbol (function, class, const) that is never imported |
 | `unused_function` | A function declared in a file but never referenced |
 | `unused_variable` | A variable declared in a file but never referenced |
-| `dead_feature_flag` | A feature flag expression matching configured patterns that is never referenced |
+| `possible_dynamic_usage` | A possible dynamic usage detected via pattern match (e.g. feature flags) |
 | `suspicious_dynamic_usage` | A call to `eval`, `Function`, `require`, or `import()` that blocks static certainty |
 
 Each finding is assigned a **confidence level** (`safe`, `likely_dead`, or `review`) based on context, and these levels are configurable per rule in `prune.yaml`.

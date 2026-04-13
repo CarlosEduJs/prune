@@ -72,7 +72,7 @@ rules:
     confidence:
       default: safe
       if_entrypoint: review
-  dead_feature_flag:
+  possible_dynamic_usage:
     enabled: true
     confidence:
       if_never_referenced: safe
@@ -88,7 +88,7 @@ rules:
       default: review
 
 report:
-  format: table
+  format: pretty
   min_confidence: safe
   include_evidence: true
 ```
@@ -204,7 +204,7 @@ entrypoints:
 **Type:** list of regular expression strings  
 **Default:** `["flags\\.[A-Z0-9_]+", "featureFlags\\.[A-Za-z0-9_]+"]`
 
-Regular expressions used to detect feature flag references in source code. The `dead_feature_flag` rule uses these patterns to find flag accesses in the AST (via `member_expression` and `subscript_expression` nodes) and report flags that are never referenced.
+Regular expressions used to detect feature flag references in source code. The `possible_dynamic_usage` rule uses these patterns to find flag accesses in the AST (via `member_expression` and `subscript_expression` nodes) and report flags that are never referenced.
 
 ```yaml
 feature_flags:
@@ -281,13 +281,13 @@ rules:
       if_entrypoint: review
 ```
 
-#### `rules.dead_feature_flag`
+#### `rules.possible_dynamic_usage`
 
 Detects feature flag references matching `feature_flags.patterns` that are never referenced in the codebase. If no flags are found at all matching the patterns, a single finding is emitted.
 
 ```yaml
 rules:
-  dead_feature_flag:
+  possible_dynamic_usage:
     enabled: true
     confidence:
       if_never_referenced: safe
@@ -320,8 +320,8 @@ These fields set defaults for the output, but CLI flags (`--format`, `--min-conf
 #### `report.format`
 
 **Type:** string  
-**Default:** `table`  
-**Accepted values:** `table`, `json`, `ndjson`
+**Default:** `pretty`  
+**Accepted values:** `pretty`, `json`, `ndjson`, `table` (alias for `pretty`)
 
 Default output format for `prune scan`.
 

@@ -1,10 +1,10 @@
 ---
 title: Output Format
-description: Describes the three output formats — table, JSON, and NDJSON — and the Finding data structure.
+description: Describes the available output formats — pretty (default), json, and ndjson — and the Finding data structure.
 icon: FileText
 ---
 
-Prune supports three output formats, selected via `--format` on the CLI or `report.format` in `prune.yaml`.
+Prune supports three primary output formats, selected via `--format` on the CLI or `report.format` in `prune.yaml`.
 
 ---
 
@@ -25,45 +25,72 @@ Every finding has the following fields, regardless of format:
 
 ---
 
-## Table Format
+## Pretty Format (Default)
 
-The default format. Outputs a tab-aligned table to stdout using fixed-width columns.
+The default format. Outputs a human-friendly tree structure grouped by file and confidence level.
 
 ```bash
 prune scan
-prune scan --format table
+prune scan --format pretty
+prune scan --format table  # alias for pretty
 ```
 
 **Example output:**
 
-```
-CONFIDENCE    KIND                       FILE                              LINE   SYMBOL              REASON
-SAFE          unused_file                src/utils/legacy.ts               1      legacy.ts           file is not referenced by any import
-SAFE          unused_export              src/components/Button.tsx         42     OldButtonVariant    exported symbol is never imported
-LIKELY_DEAD   unused_function            src/lib/helpers.ts                18     formatDeprecated    function declared but never referenced
-REVIEW        suspicious_dynamic_usage   src/loader.ts                     1      require             dynamic usage may hide references
+```bash
+Prune v0.1.0-beta.1 — 4 issues found in 340ms
 
-Scan finished in 340ms
+✔ SAFE (2)
+
+  src/utils/legacy.ts
+  └─ unused file: legacy.ts
+
+  src/components/Button.tsx
+  └─ unused export: OldButtonVariant
+
+⚠ LIKELY DEAD (1)
+
+  src/lib/helpers.ts
+  └─ unused function: formatDeprecated
+
+⚠ REVIEW (1)
+
+  src/loader.ts
+  └─ suspicious dynamic usage: require
+
+─────────────────────────────────
+Summary
+
+  Files        1
+  Exports      1
+  Functions    1
+  Dynamic      1
+
+  SAFE         2
+  LIKELY DEAD  1
+  REVIEW       1
+
+  Total        4
+
+Done in 340ms
 ```
 
 When no findings match the confidence filter:
 
-```
+```bash
 ✨ No dead code found!
 
-Scan finished in 280ms
+Done in 280ms
 ```
 
-**Column details:**
+**Output details:**
 
-- `CONFIDENCE`: Uppercase confidence level
-- `KIND`: Rule identifier
-- `FILE`: Relative path to the file, or `-` if not file-specific
-- `LINE`: Declaration line number
-- `SYMBOL`: Identifier or file basename
-- `REASON`: Short description from the rule
+- **Grouping**: Findings are grouped first by **Confidence Level** (`SAFE`, `LIKELY DEAD`, `REVIEW`) and then by **File Path**.
+- **Icons**: Uses `✔` for SAFE findings and `⚠` for LIKELY DEAD and REVIEW levels.
+- **Summary**: Provides an aggregated count of findings by type (Files, Exports, Functions, Dynamic) and by confidence level.
+- **Duration**: The total execution time is displayed at the top and bottom.
 
-The scan duration line is printed only in table format, not in JSON or NDJSON mode.
+The `pretty` format is designed for developer readability. For automation or large-scale data processing, use `json` or `ndjson`.
 
 ---
 
