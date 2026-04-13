@@ -23,13 +23,13 @@ export default function Navbar() {
   return (
     <div className={cn(
       "fixed top-0 left-0 right-0 z-50 flex justify-center w-full pointer-events-none transition-all duration-500 ease-out",
-      isScrolled ? "pt-4 sm:pt-6" : "pt-0"
+      isScrolled ? "pt-2 sm:pt-6" : "pt-0"
     )}>
       <header className={cn(
         "flex items-center justify-between pointer-events-auto transition-all duration-500 ease-out border",
         isScrolled 
-          ? "w-[95%] max-w-3xl px-6 py-3 bg-background/80 backdrop-blur-md rounded-full shadow-sm border-border" 
-          : "w-full max-w-full px-12 py-6 bg-transparent border-transparent rounded-none"
+          ? "w-[92%] sm:w-[95%] max-w-3xl px-4 sm:px-6 py-2 sm:py-3 bg-background/80 backdrop-blur-md rounded-full shadow-sm border-border" 
+          : "w-full max-w-full px-6 sm:px-12 py-4 sm:py-6 bg-transparent border-transparent rounded-none"
       )}>
         <h1 className={cn(
           "font-bold transition-all duration-500",
