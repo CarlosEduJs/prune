@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 
-const BASE_URL = 'https://useprune.dev';
+const BASE_URL = 'https://prune-rose.vercel.app';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
