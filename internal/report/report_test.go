@@ -12,8 +12,11 @@ func TestNewFormatter(t *testing.T) {
 	if f, err := NewFormatter("json"); err != nil || f == nil {
 		t.Fatalf("expected json formatter, got err: %v", err)
 	}
+	if f, err := NewFormatter("pretty"); err != nil || f == nil {
+		t.Fatalf("expected pretty formatter, got err: %v", err)
+	}
 	if f, err := NewFormatter("table"); err != nil || f == nil {
-		t.Fatalf("expected table formatter, got err: %v", err)
+		t.Fatalf("expected table (alias for pretty) formatter, got err: %v", err)
 	}
 	if f, err := NewFormatter("unknown"); err == nil || f != nil {
 		t.Fatalf("expected error for unknown formatter")
@@ -68,47 +71,54 @@ func TestJSONFormatter(t *testing.T) {
 	}
 }
 
-func TestTableFormatter(t *testing.T) {
-	formatter, err := NewFormatter("table")
+func TestPrettyFormatterNoFindings(t *testing.T) {
+	formatter, err := NewFormatter("pretty")
 	if err != nil || formatter == nil {
-		t.Fatalf("missing table formatter, err: %v", err)
+		t.Fatalf("missing pretty formatter, err: %v", err)
 	}
 
 	data, err := formatter.Format(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if string(data) != "✨ No dead code found!\n" {
-		t.Fatalf("unexpected no-findings output")
+	if !strings.Contains(string(data), "No dead code found") {
+		t.Fatalf("unexpected no-findings output: %s", string(data))
+	}
+}
+
+func TestPrettyFormatterWithFindings(t *testing.T) {
+	formatter, err := NewFormatter("pretty")
+	if err != nil || formatter == nil {
+		t.Fatalf("missing pretty formatter, err: %v", err)
 	}
 
-	findings := []rules.Finding{{Confidence: "safe", Kind: "unused", File: "a.js", Line: 2, Symbol: "x", Reason: "r"}}
-	data, err = formatter.Format(findings)
+	findings := []rules.Finding{{Confidence: "safe", Kind: "unused_export", File: "a.js", Line: 2, Symbol: "x", Reason: "r"}}
+	data, err := formatter.Format(findings)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	output := string(data)
-	if !strings.Contains(output, "CONFIDENCE") || !strings.Contains(output, "REASON") {
-		t.Fatalf("missing header")
-	}
 	if !strings.Contains(output, "SAFE") {
-		t.Fatalf("missing row status")
+		t.Fatalf("missing SAFE section")
 	}
 	if !strings.Contains(output, "a.js") {
-		t.Fatalf("missing row file")
+		t.Fatalf("missing file path")
+	}
+	if !strings.Contains(output, "unused export: x") {
+		t.Fatalf("missing finding detail, got: %s", output)
 	}
 }
 
-func TestTableFormatterMissingFile(t *testing.T) {
-	formatter, err := NewFormatter("table")
+func TestPrettyFormatterMissingFile(t *testing.T) {
+	formatter, err := NewFormatter("pretty")
 	if err != nil || formatter == nil {
-		t.Fatalf("missing table formatter, err: %v", err)
+		t.Fatalf("missing pretty formatter, err: %v", err)
 	}
 	data, err := formatter.Format([]rules.Finding{{Confidence: "safe", Kind: "dead_feature_flag"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(string(data), "SAFE") {
-		t.Fatalf("expected placeholder for missing file")
+		t.Fatalf("expected SAFE section in output")
 	}
 }

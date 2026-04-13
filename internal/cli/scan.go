@@ -89,7 +89,12 @@ func runScan(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	out, err := report.NewFormatter(opts.format)
+	out, err := report.NewFormatter(opts.format, report.FormatterOptions{
+		Duration:  time.Since(start),
+		Compact:   opts.compact,
+		Only:      opts.only,
+		Deletable: opts.deletable,
+	})
 	if err != nil {
 		return fmt.Errorf("creating formatter: %w", err)
 	}
@@ -107,10 +112,6 @@ func runScan(ctx context.Context, args []string) error {
 
 	if opts.failOnFindings && len(filtered) > 0 {
 		return fmt.Errorf("found %d findings", len(filtered))
-	}
-
-	if opts.format == "table" {
-		fmt.Printf("\nScan finished in %s\n", time.Since(start).Round(time.Millisecond))
 	}
 
 	return nil
