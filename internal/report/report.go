@@ -5,22 +5,37 @@ import (
 	"fmt"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"prune/internal/rules"
 )
+
+var version = "0.0.3"
+
+type FormatterOptions struct {
+	Duration  time.Duration
+	Compact   bool
+	Only      string
+	Deletable bool
+}
 
 type Formatter interface {
 	Format([]rules.Finding) ([]byte, error)
 }
 
-func NewFormatter(format string) (Formatter, error) {
+func NewFormatter(format string, opts ...FormatterOptions) (Formatter, error) {
+	o := FormatterOptions{}
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+
 	switch strings.ToLower(format) {
 	case "json":
 		return jsonFormatter{}, nil
 	case "ndjson":
 		return ndjsonFormatter{}, nil
-	case "table":
-		return tableFormatter{}, nil
+	case "table", "pretty":
+		return prettyFormatter{opts: o}, nil
 	default:
 		return nil, fmt.Errorf("unknown format: %q", format)
 	}
