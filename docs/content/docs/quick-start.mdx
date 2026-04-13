@@ -67,16 +67,44 @@ prune scan
 
 Prune reads `prune.yaml` from the current directory, walks the declared scan paths, parses every matching file, and prints findings to stdout.
 
-**Example output (table format):**
+**Example output (`pretty` format):**
 
-```
-CONFIDENCE    KIND              FILE                        LINE   SYMBOL              REASON
-SAFE          unused_file       src/utils/legacy.ts         1      legacy.ts           file is not referenced by any import
-SAFE          unused_export     src/components/Button.tsx   42     OldButtonVariant    exported symbol is never imported
-LIKELY_DEAD   unused_function   src/lib/helpers.ts          18     formatDeprecated    function declared but never referenced
-REVIEW        suspicious_dynamic_usage  src/loader.ts       1      require             dynamic usage may hide references
+```bash
+Prune v0.1.0-beta.1 — 4 issues found in 340ms
 
-Scan finished in 340ms
+✔ SAFE (2)
+
+  src/utils/legacy.ts
+  └─ unused file: legacy.ts
+
+  src/components/Button.tsx
+  └─ unused export: OldButtonVariant
+
+⚠ LIKELY DEAD (1)
+
+  src/lib/helpers.ts
+  └─ unused function: formatDeprecated
+
+⚠ REVIEW (1)
+
+  src/loader.ts
+  └─ suspicious dynamic usage: require
+
+─────────────────────────────────
+Summary
+
+  Files        1
+  Exports      1
+  Functions    1
+  Dynamic      1
+
+  SAFE         2
+  LIKELY DEAD  1
+  REVIEW       1
+
+  Total        4
+
+Done in 340ms
 ```
 
 If no dead code is found:

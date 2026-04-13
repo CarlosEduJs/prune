@@ -77,7 +77,7 @@ prune scan [flags]
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--config` | string | `prune.yaml` | Path to the Prune configuration file |
-| `--format` | string | `table` | Output format: `table`, `json`, or `ndjson` |
+| `--format` | string | `pretty` | Output format: `pretty`, `json`, `ndjson`, or `table` (alias for `pretty`) |
 | `--min-confidence` | string | `safe` | Minimum confidence level to include in output: `safe`, `likely_dead`, or `review` |
 | `--paths` | string (repeatable) | _(from config)_ | Override scan paths. Can be specified multiple times |
 | `--fail-on-findings` | bool | `false` | Exit with a non-zero status code if any findings match the confidence filter |
@@ -111,7 +111,7 @@ prune scan --stream --stream-interval 100
 
 **Notes on streaming:**
 
-When `--stream` is enabled and `--format` is `json`, the format is automatically promoted to `ndjson`. The `table` format is not supported in streaming mode — only `ndjson` produces streamed output; for other formats, the stream flag enables batched collection but output is still printed once after completion.
+When `--stream` is enabled and `--format` is `json`, the format is automatically promoted to `ndjson`. The `pretty` and `table` formats are not supported in streaming mode — only `ndjson` produces streamed output; for other formats, the stream flag enables batched collection but output is still printed once after completion.
 
 ---
 
@@ -133,7 +133,7 @@ unused_function             Function declared but never used
 unused_variable             Variable declared but never used
 unused_export               Exported symbol never imported
 unused_file                 File never imported or referenced
-dead_feature_flag           Feature flag with dead code
+possible_dynamic_usage      Possible dynamic usage detected via pattern match
 suspicious_dynamic_usage    Dynamic usage that blocks certainty
 ```
 
