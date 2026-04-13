@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/og/'],
       },
     ],
-    sitemap: 'https://useprune.dev/sitemap.xml',
-    host: 'https://useprune.dev',
+    sitemap: 'https://prune-rose.vercel.app/sitemap.xml',
+    host: 'https://prune-rose.vercel.app',
   };
 }

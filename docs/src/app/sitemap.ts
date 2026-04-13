@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { source } from '@/lib/source';
 
-const BASE_URL = 'https://useprune.dev';
+const BASE_URL = 'https://prune-rose.vercel.app';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const docPages = source.getPages().map((page) => ({
