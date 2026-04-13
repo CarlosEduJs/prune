@@ -1,5 +1,8 @@
 # Prune
 
+> [!NOTE]
+> **Prune is currently in Beta (v0.1.0-beta.1).** It is under active development, and features, CLI flags, or output formats may change before the stable release.
+
 Static analysis tool designed to identify dead code in JavaScript and TypeScript projects (for now...).
 
 ## Description
@@ -228,6 +231,9 @@ jobs:
 The `--fail-on-findings` flag ensures that the pipeline exits with a non-zero status code if unreachable dead code is detected, facilitating automated code quality enforcement.
 
 ## Limitations / Known Issues
+
+> [!TIP]
+> **Handling False Positives:** Dynamic code patterns (like `eval`, bracket notation `obj[var]`, or dynamic imports) can't always be strictly resolved statically. Prune flags these as `REVIEW` rather than `SAFE` so you can manually verify them, minimizing the risk of accidentally deleting actively used code!
 
 - Support is currently restricted to JavaScript and TypeScript ecosystems.
 - Dynamic imports or class property access via strings may result in false positives (marked as `REVIEW`).
