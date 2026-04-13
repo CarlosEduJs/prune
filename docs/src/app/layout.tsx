@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import './global.css';
 import { Inter, Sora, Public_Sans, Fira_Code } from 'next/font/google';
@@ -13,6 +14,21 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
+export const metadata: Metadata = {
+  metadataBase: new URL('https://useprune.dev'),
+  title: {
+    default: 'Prune — Dead Code Analyzer for JavaScript & TypeScript',
+    template: '%s | Prune',
+  },
+  description:
+    'Prune is a static analysis CLI tool that finds unreachable code, orphaned files, and unused exports in JavaScript and TypeScript projects.',
+  // Add your verification tokens below when you have them:
+  // verification: {
+  //   google: 'YOUR_GOOGLE_VERIFICATION_TOKEN',
+  //   yandex: 'YOUR_YANDEX_TOKEN',
+  // },
+};
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={cn(inter.className, soraSora.variable, publicSansPublicSans.variable, firaCodeFiraCode.variable)} suppressHydrationWarning>
@@ -22,3 +38,4 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </html>
   );
 }
+
