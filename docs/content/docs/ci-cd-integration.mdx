@@ -98,6 +98,28 @@ To run Prune and log findings without blocking the pipeline:
 
 In CI, JSON or NDJSON output is more useful than the table format for downstream tools:
 
+// [!code ++]
+```bash
+# Count total safe findings (updated for new JSON structure)
+prune scan --format json | jq '.findings | map(select(.confidence == "safe")) | length'
+
+# List all orphaned files
+prune scan --format json | jq '.findings[] | select(.kind == "unused_file") | .file'
+
+# Fail if more than 10 safe findings
+COUNT=$(prune scan --format json | jq '.findings | map(select(.confidence == "safe")) | length')
+if [ "$COUNT" -gt 10 ]; then
+  echo "Too many dead code findings: $COUNT"
+  exit 1
+fi
+```
+
+<Callout type="info">
+The new JSON format wraps findings in a root object with `summary` and `metadata`. Update any jq filters to access `.findings` first.
+</Callout>
+// [!code --]
+
+// [!code highlight]
 ```bash
 # Count total safe findings
 prune scan --format json | jq 'map(select(.confidence == "safe")) | length'
@@ -112,6 +134,7 @@ if [ "$COUNT" -gt 10 ]; then
   exit 1
 fi
 ```
+// [!code focus]
 
 ---
 

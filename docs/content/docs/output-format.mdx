@@ -96,7 +96,7 @@ The `pretty` format is designed for developer readability. For automation or lar
 
 ## JSON Format
 
-Outputs the full findings list as a pretty-printed JSON array. Useful for programmatic processing of complete results.
+Outputs a structured JSON object with summary, findings, and metadata. Useful for programmatic processing of complete results.
 
 ```bash
 prune scan --format json
@@ -105,41 +105,73 @@ prune scan --format json
 **Example output:**
 
 ```json
-[
-  {
-    "id": "unused_file:src/utils/legacy.ts",
-    "kind": "unused_file",
-    "confidence": "safe",
-    "file": "src/utils/legacy.ts",
-    "line": 1,
-    "symbol": "legacy.ts",
-    "reason": "file is not referenced by any import"
+{
+  "summary": {
+    "files": 3,
+    "issues": 12,
+    "safe": 7,
+    "review": 5
   },
-  {
-    "id": "unused_export:src/components/Button.tsx:OldButtonVariant",
-    "kind": "unused_export",
-    "confidence": "safe",
-    "file": "src/components/Button.tsx",
-    "line": 42,
-    "symbol": "OldButtonVariant",
-    "reason": "exported symbol is never imported"
-  },
-  {
-    "id": "unused_function:src/lib/helpers.ts:formatDeprecated",
-    "kind": "unused_function",
-    "confidence": "likely_dead",
-    "file": "src/lib/helpers.ts",
-    "line": 18,
-    "symbol": "formatDeprecated",
-    "reason": "function declared but never referenced"
+  "findings": [
+    {
+      "id": "unused_file:src/utils/legacy.ts",
+      "kind": "unused_file",
+      "confidence": "safe",
+      "file": "src/utils/legacy.ts",
+      "line": 1,
+      "symbol": "legacy.ts",
+      "reason": "file is not referenced by any import"
+    },
+    {
+      "id": "unused_export:src/components/Button.tsx:OldButtonVariant",
+      "kind": "unused_export",
+      "confidence": "safe",
+      "file": "src/components/Button.tsx",
+      "line": 42,
+      "symbol": "OldButtonVariant",
+      "reason": "exported symbol is never imported"
+    },
+    {
+      "id": "unused_function:src/lib/helpers.ts:formatDeprecated",
+      "kind": "unused_function",
+      "confidence": "likely_dead",
+      "file": "src/lib/helpers.ts",
+      "line": 18,
+      "symbol": "formatDeprecated",
+      "reason": "function declared but never referenced"
+    }
+  ],
+  "metadata": {
+    "entrypoints": ["src/index.ts", "src/main.tsx", "src/pages/**"],
+    "scan_time_ms": 340
   }
-]
+}
 ```
 
-When no findings match the filter, an empty JSON array is returned:
+### Summary Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `files` | int | Unique file count with findings |
+| `issues` | int | Total number of findings |
+| `safe` | int | Findings with `confidence: "safe"` |
+| `review` | int | Findings with `confidence: "review"` or `"likely_dead"` |
+
+### Metadata Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `entrypoints` | string[] | Entrypoint files and patterns from config |
+| `scan_time_ms` | int | Scan duration in milliseconds |
+
+When no findings match the filter, an empty findings array is returned:
 
 ```json
-[]
+{
+  "summary": { "files": 0, "issues": 0, "safe": 0, "review": 0 },
+  "findings": [],
+  "metadata": { "entrypoints": [...], "scan_time_ms": 10 }
+}
 ```
 
 ---
