@@ -48,8 +48,8 @@ func TestWriteDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Version != 1 {
-		t.Fatalf("expected version 1")
+	if cfg.Version != 2 {
+		t.Fatalf("expected version 2")
 	}
 	if cfg.Project.Language != "js-ts" {
 		t.Fatalf("expected js-ts language")
