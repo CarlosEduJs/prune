@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"prune/internal/config"
 	"prune/internal/rules"
 )
 
@@ -17,6 +18,7 @@ type FormatterOptions struct {
 	Compact   bool
 	Only      string
 	Deletable bool
+	Config    *config.Config
 }
 
 type Formatter interface {
@@ -31,7 +33,7 @@ func NewFormatter(format string, opts ...FormatterOptions) (Formatter, error) {
 
 	switch strings.ToLower(format) {
 	case "json":
-		return jsonFormatter{}, nil
+		return jsonFormatter{opts: o}, nil
 	case "ndjson":
 		return ndjsonFormatter{}, nil
 	case "table", "pretty":
@@ -56,10 +58,74 @@ func FilterByConfidence(findings []rules.Finding, min string) []rules.Finding {
 	return filtered
 }
 
-type jsonFormatter struct{}
+type JSONReport struct {
+	Summary  Summary         `json:"summary"`
+	Findings []rules.Finding `json:"findings"`
+	Metadata Metadata        `json:"metadata"`
+}
+
+type Summary struct {
+	Files  int `json:"files"`
+	Issues int `json:"issues"`
+	Safe   int `json:"safe"`
+	Review int `json:"review"`
+}
+
+type Metadata struct {
+	Entrypoints []string `json:"entrypoints"`
+	ScanTimeMs  int64    `json:"scan_time_ms"`
+}
+
+func buildSummary(findings []rules.Finding) Summary {
+	uniqueFiles := map[string]bool{}
+	safeCount := 0
+	reviewCount := 0
+
+	for _, f := range findings {
+		if f.File != "" {
+			uniqueFiles[f.File] = true
+		}
+		switch f.Confidence {
+		case "safe":
+			safeCount++
+		case "likely_dead", "review":
+			reviewCount++
+		}
+	}
+
+	return Summary{
+		Files:  len(uniqueFiles),
+		Issues: len(findings),
+		Safe:   safeCount,
+		Review: reviewCount,
+	}
+}
+
+func buildMetadata(opts FormatterOptions) Metadata {
+	entrypoints := []string{}
+	if opts.Config != nil {
+		entrypoints = append(entrypoints, opts.Config.Entrypoints.Files...)
+		entrypoints = append(entrypoints, opts.Config.Entrypoints.Patterns...)
+	}
+	return Metadata{
+		Entrypoints: entrypoints,
+		ScanTimeMs:  opts.Duration.Milliseconds(),
+	}
+}
+
+type jsonFormatter struct {
+	opts FormatterOptions
+}
 
 func (f jsonFormatter) Format(findings []rules.Finding) ([]byte, error) {
-	return json.MarshalIndent(findings, "", "  ")
+	summary := buildSummary(findings)
+	metadata := buildMetadata(f.opts)
+	report := JSONReport{
+		Summary:  summary,
+		Findings: findings,
+		Metadata: metadata,
+	}
+	return json.MarshalIndent(report, "", "  ")
 }
 
 type ndjsonFormatter struct{}

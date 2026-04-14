@@ -94,6 +94,7 @@ func runScan(ctx context.Context, args []string) error {
 		Compact:   opts.compact,
 		Only:      opts.only,
 		Deletable: opts.deletable,
+		Config:    cfg,
 	})
 	if err != nil {
 		return fmt.Errorf("creating formatter: %w", err)
