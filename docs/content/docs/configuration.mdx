@@ -196,7 +196,13 @@ report:
 **Type:** integer  
 **Required:** yes
 
-Schema version. Must be `1`. Prune will return an error if this field is absent or set to `0`.
+// [!code --]
+Schema version. Must be `1`.
+// [!code ++]
+Schema version. Must be `2` (or `1` for legacy configs).
+// [!code focus]
+
+Prune will return an error if this field is absent or set to `0`.
 
 ---
 
