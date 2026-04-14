@@ -33,11 +33,18 @@ type Config struct {
 		MinConfidence   string `yaml:"min_confidence"`
 		IncludeEvidence bool   `yaml:"include_evidence"`
 	} `yaml:"report"`
+	TsConfig TsConfig `yaml:"ts_config"`
 }
 
 type StreamConfig struct {
 	Enabled    bool `yaml:"enabled"`
 	IntervalMs int  `yaml:"interval_ms"`
+}
+
+type TsConfig struct {
+	Enabled bool                `yaml:"enabled"`
+	BaseURL string              `yaml:"baseUrl"`
+	Paths   map[string][]string `yaml:"paths"`
 }
 
 type RuleConfig struct {

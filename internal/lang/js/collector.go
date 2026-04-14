@@ -15,6 +15,7 @@ import (
 
 type Collector struct {
 	cfg               *config.Config
+	resolver          *Resolver
 	imports           map[string][]string
 	importSpecs       map[string][]ImportSpec
 	importsResolved   map[string][]string
@@ -90,6 +91,8 @@ func (c *Collector) Collect(ctx context.Context, entries []scan.FileEntry) (*Col
 		fileIndex[entry.Rel] = entry
 	}
 
+	c.resolver = NewResolver(c.cfg, fileIndex)
+
 	patterns := c.cfg.FeatureFlags.Patterns
 	flagRegexes := compileRegexes(patterns)
 
@@ -109,7 +112,9 @@ func (c *Collector) Collect(ctx context.Context, entries []scan.FileEntry) (*Col
 			if importSpecs[i].SideEffect {
 				continue
 			}
-			importSpecs[i].Resolved = resolveImportSpec(entry.Rel, importSpecs[i], fileIndex)
+			resolved := c.resolver.Resolve(importSpecs[i].Source, entry.Rel)
+			importSpecs[i].Resolved = resolved.Resolved
+			importSpecs[i].Confidence = resolved.Confidence
 		}
 		c.imports[entry.Rel] = rawImports
 		c.importSpecs[entry.Rel] = importSpecs
@@ -278,6 +283,7 @@ func readFile(path string) (string, error) {
 type ImportSpec struct {
 	Source     string
 	Resolved   string
+	Confidence string
 	Names      []string
 	Wildcard   bool
 	SideEffect bool
