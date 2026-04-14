@@ -36,15 +36,32 @@ Prune has no way to determine which files are actually loaded at runtime. Files 
 
 ## Ignored Import Patterns
 
-Only **relative imports** (starting with `./` or `../`) are resolved to files in the project. Non-relative imports are treated as external packages and ignored for dead code purposes:
+Only **relative imports** (starting with `./` or `../`) and **configured aliases** are resolved to files in the project. Non-relative imports are treated as external packages and ignored for dead code purposes:
 
 ```ts
 import React from 'react';              // ignored — external
-import { foo } from '@/lib/utils';      // ignored — path alias, not resolved
 import { bar } from './local-module';   // resolved — analyzed
 ```
 
-**Path aliases** (e.g., `@/`, `~/`, `#`) are not resolved. If your project uses TypeScript path mappings, files imported only through aliases will appear as `unused_file` or `unused_export` findings unless they are also imported via relative paths or declared as entrypoints.
+Path aliases (e.g., `@/`, `~/`) are resolved when configured in `ts_config`:
+
+```yaml
+ts_config:
+  enabled: true
+  baseUrl: .
+  paths:
+    "@/*":           # @/lib/utils → src/lib/utils
+      - src/*
+    "~/*":          # ~/components → src/components
+      - src/components/*
+```
+
+```ts
+import { foo } from '@/lib/utils';   // resolved — analyzed
+import { bar } from '~/components'; // resolved — analyzed
+```
+
+If an alias is configured but the target file is not found, the import is marked with `review` confidence rather than `safe`.
 
 ---
 
