@@ -142,6 +142,18 @@ version: 2
 project:
   name: my-app
   language: js-ts
+
+// [!code ++]
+ts_config:
+  enabled: true
+  baseUrl: .
+  paths:
+    "@/*":
+      - src/*
+    "~/*":
+      - src/components/*
+// [!code --]
+
 scan:
   paths:
     - src

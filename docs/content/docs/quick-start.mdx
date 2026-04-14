@@ -17,10 +17,21 @@ prune init
 This creates a `prune.yaml` file in the current directory with sensible defaults. The default configuration assumes a project in the `js-ts` language mode and scans the current directory for `.js`, `.jsx`, `.ts`, and `.tsx` files.
 
 ```yaml
+// [!code --]
+version: 1
+// [!code ++]
 version: 2
 project:
   name: prune
   language: js-ts
+
+ts_config:
+  enabled: true
+  baseUrl: .
+  paths:
+    "@/*":
+      - src/*
+
 scan:
   paths:
     - .
