@@ -6,9 +6,7 @@ icon: Settings
 
 Prune is configured through a YAML file, by default named `prune.yaml` in the current directory. You can generate a starting config with `prune init`, or write one from scratch using the reference below.
 
-The `version` field is required and must be `2`. Prune will refuse to run if `version` is missing or zero.
-
----
+The `version` field is required and must be `2` (or `1` for legacy configs). Prune will refuse to run if `version` is missing or zero.
 
 ## Full Schema
 
@@ -27,6 +25,93 @@ ts_config:
       - src/*
     "~/*":
       - src/components/*
+
+scan:
+  paths:
+    - src
+  include:
+    - '**/*.ts'
+    - '**/*.tsx'
+    - '**/*.js'
+    - '**/*.jsx'
+  exclude:
+    - node_modules/**
+    - dist/**
+    - build/**
+    - .next/**
+    - out/**
+    - coverage/**
+  stream:
+    enabled: false
+    interval_ms: 250
+
+entrypoints:
+  files:
+    - src/index.ts
+  patterns:
+    - src/pages/**
+    - src/routes/**
+
+feature_flags:
+  patterns:
+    - 'flags\.[A-Z0-9_]+'
+    - 'featureFlags\.[A-Za-z0-9_]+'
+
+rules:
+  unused_function:
+    enabled: true
+    confidence:
+      default: likely_dead
+      if_dynamic_usage: review
+  unused_variable:
+    enabled: true
+    confidence:
+      default: safe
+      if_exported: likely_dead
+      if_dynamic_usage: review
+  unused_export:
+    enabled: true
+    confidence:
+      if_not_imported: safe
+      if_entrypoint: review
+  unused_file:
+    enabled: true
+    confidence:
+      default: safe
+      if_entrypoint: review
+  possible_dynamic_usage:
+    enabled: true
+    confidence:
+      if_never_referenced: safe
+      if_dynamic_reference: review
+  suspicious_dynamic_usage:
+    enabled: true
+    patterns:
+      - eval
+      - Function
+      - require
+      - 'import('
+    confidence:
+      default: review
+
+report:
+  format: pretty
+  min_confidence: safe
+  include_evidence: true
+```
+
+## Migration from v1
+
+If you're upgrading from config version `1`, the only change needed is bumping the version number:
+
+```yaml
+// [!code --]
+version: 1
+// [!code ++]
+version: 2
+```
+
+Version `2` adds support for path aliases via `ts_config`.Configs using version `1` will continue to work — Prune only requires `version >= 1`.
 
 scan:
   paths:
