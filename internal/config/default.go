@@ -16,7 +16,7 @@ func WriteDefault(path string) error {
 }
 
 func defaultConfig() *Config {
-	cfg := &Config{Version: 1}
+	cfg := &Config{Version: 2}
 	cfg.Project.Name = "prune"
 	cfg.Project.Language = "js-ts"
 	cfg.Scan.Paths = []string{"."}
@@ -78,5 +78,6 @@ func defaultConfig() *Config {
 	cfg.Report.Format = "table"
 	cfg.Report.MinConfidence = "safe"
 	cfg.Report.IncludeEvidence = true
+	cfg.TsConfig.Enabled = false
 	return cfg
 }
