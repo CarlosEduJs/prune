@@ -20,6 +20,7 @@ Prune identifies unreachable code by building a dependency graph from defined en
     - Suspicious dynamic code usage (e.g., `eval`, `Function`).
 - Human-friendly CLI output format grouped by file (`pretty`).
 - Machine-readable output (JSON, NDJSON) for automation.
+- **Path alias resolution** for TypeScript aliases like `@/` and `~/`.
 - **Streaming mode** for partial results in real-time.
 - CI/CD integration via exit codes and finding thresholds.
 - Cross-platform support (Linux, macOS, Windows).
@@ -155,10 +156,20 @@ prune rules
 Configuration is managed via `prune.yaml`.
 
 ```yaml
-version: 1
+version: 2
 project:
   name: my-project
   language: js-ts
+
+ts_config:
+  enabled: true
+  baseUrl: .
+  paths:
+    "@/*":
+      - src/*
+    "~/*":
+      - src/components/*
+
 scan:
   paths:
     - src
@@ -238,6 +249,7 @@ The `--fail-on-findings` flag ensures that the pipeline exits with a non-zero st
 - Support is currently restricted to JavaScript and TypeScript ecosystems.
 - Dynamic imports or class property access via strings may result in false positives (marked as `REVIEW`).
 - Large codebases with circular dependencies may require higher memory allocation during Graph traversal.
+- Scoped alias patterns like `@scope/*` are not supported.
 
 ## License
 
