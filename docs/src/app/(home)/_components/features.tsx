@@ -29,6 +29,10 @@ export default function Features() {
           <h3 className="font-semibold text-xl">Machine Readable</h3>
           <p className="text-muted-foreground leading-relaxed text-sm sm:text-base text-justify sm:text-left">Output in <code className="bg-muted px-1.5 py-0.5 rounded border border-border text-[10px] sm:text-xs">json</code> or <code className="bg-muted px-1.5 py-0.5 rounded border border-border text-[10px] sm:text-xs">ndjson</code> for integrations and custom tooling.</p>
         </div>
+        <div className="flex flex-col gap-3">
+          <h3 className="font-semibold text-xl">Path Aliases</h3>
+          <p className="text-muted-foreground leading-relaxed text-sm sm:text-base text-justify sm:text-left">Resolves TypeScript path aliases like <code className="bg-muted px-1.5 py-0.5 rounded border-border text-[10px] sm:text-xs">@/</code> and <code className="bg-muted px-1.5 py-0.5 rounded border border-border text-[10px] sm:text-xs">~/</code> configured via <code className="bg-muted px-1.5 py-0.5 rounded border border-border text-[10px] sm:text-xs">ts_config</code>.</p>
+        </div>
       </div>
     </Section>
   );
