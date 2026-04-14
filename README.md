@@ -79,6 +79,9 @@ Flags:
 - `--fail-on-findings`: Exit with a non-zero status code if problems are detected.
 - `--stream`: Enable streaming mode for partial results in real-time.
 - `--stream-interval`: Interval in ms between stream flushes (default: 250ms).
+- `--compact`: Show only summary counts.
+- `--only`: Show only findings with this confidence.
+- `--deletable`: Show only files that are safe to delete.
 
 
 Pretty Output
@@ -121,6 +124,43 @@ Summary
   Total        11
 
 Done in 9ms
+```
+
+### JSON Output
+
+For automation, use JSON format with structured output:
+
+```bash
+prune scan --format json
+```
+
+Output includes summary, findings, and metadata:
+
+```json
+{
+  "summary": {
+    "files": 3,
+    "issues": 12,
+    "safe": 7,
+    "review": 5
+  },
+  "findings": [
+    {
+      "id": "unused_file:src/utils/legacy.ts",
+      "kind": "unused_file",
+      "confidence": "safe",
+      "file": "src/utils/legacy.ts",
+      "line": 1,
+      "symbol": "legacy.ts",
+      "reason": "file is not referenced by any import"
+    }
+    // ... more findings
+  ],
+  "metadata": {
+    "entrypoints": ["src/main.ts", "src/pages/**"],
+    "scan_time_ms": 9
+  }
+}
 ```
 
 ### Streaming Mode
