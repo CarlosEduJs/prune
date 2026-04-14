@@ -1,0 +1,36 @@
+version: 1
+project:
+    name: ts-alias
+    language: js-ts
+scan:
+    paths:
+        - src
+    include:
+        - '**/*.ts'
+        - '**/*.tsx'
+    exclude:
+        - node_modules/**
+entrypoints:
+    files:
+        - src/index.ts
+ts_config:
+    enabled: true
+    baseUrl: .
+    paths:
+        "@/*":
+            - src/*
+        "~/*":
+            - src/components/*
+rules:
+    unused_function:
+        enabled: true
+    unused_variable:
+        enabled: true
+    unused_export:
+        enabled: true
+    unused_file:
+        enabled: true
+report:
+    format: table
+    min_confidence: safe
+    include_evidence: true
