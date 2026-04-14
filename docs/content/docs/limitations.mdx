@@ -36,32 +36,32 @@ Prune has no way to determine which files are actually loaded at runtime. Files 
 
 ## Ignored Import Patterns
 
-Only **relative imports** (starting with `./` or `../`) and **configured aliases** are resolved to files in the project. Non-relative imports are treated as external packages and ignored for dead code purposes:
+Only **relative imports** (starting with `./` or `../`) and **configured aliases** are resolved to files in the project. Non-relative imports are treated as external packages and skipped from the dependency graph.
 
 ```ts
-import React from 'react';              // ignored — external
+import React from 'react';              // skipped — external package
 import { bar } from './local-module';   // resolved — analyzed
 ```
 
-Path aliases (e.g., `@/`, `~/`) are resolved when configured in `ts_config`:
+Path aliases (e.g., `@/`, `~/`) are resolved when configured:
 
 ```yaml
 ts_config:
   enabled: true
   baseUrl: .
   paths:
-    "@/*":           # @/lib/utils → src/lib/utils
+    "@/*":
       - src/*
-    "~/*":          # ~/components → src/components
-      - src/components/*
 ```
 
-```ts
-import { foo } from '@/lib/utils';   // resolved — analyzed
-import { bar } from '~/components'; // resolved — analyzed
-```
+Aliases not configured in `ts_config` are treated as external and skipped.
 
-If an alias is configured but the target file is not found, the import is marked with `review` confidence rather than `safe`.
+### Alias Resolution Edge Cases
+
+// [!code highlight]
+- **Scoped patterns** like `@scope/*` are not supported — only exact prefix matches (`@/*`, `~/*`)
+- **Multi-level wildcards** like `@utils/*/helper` resolve only the first match segment
+- **Missing targets** are marked `review` rather than `safe` (conservative)
 
 ---
 
