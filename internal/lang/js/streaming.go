@@ -17,10 +17,7 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 		return nil, errors.New("config is required")
 	}
 
-	streamCfg := &scan.StreamConfig{
-		Enabled:    cfg.Scan.Stream.Enabled,
-		IntervalMs: cfg.Scan.Stream.IntervalMs,
-	}
+	stream := cfg.Scan.Stream
 
 	entries, err := scan.CollectWithContext(ctx, cfg)
 	if err != nil {
@@ -37,7 +34,7 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 		defer close(entriesCh)
 		batch := []scan.FileEntry{}
 		lastEmit := time.Now()
-		interval := time.Duration(streamCfg.IntervalMs) * time.Millisecond
+		interval := time.Duration(stream.IntervalMs) * time.Millisecond
 
 		for _, entry := range entries {
 			select {
@@ -78,7 +75,7 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 		allFindings = append(allFindings, findings...)
 		processed += len(batch)
 
-		if streamCfg.Enabled && streamCfg.IntervalMs > 0 && handler != nil {
+		if stream.Enabled && stream.IntervalMs > 0 && handler != nil {
 			if err := handler(findings); err != nil {
 				return nil, err
 			}
