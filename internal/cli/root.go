@@ -2,57 +2,35 @@ package cli
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"os"
 
+	"prune/internal/cli/cmd"
 	"prune/internal/version"
 )
-
-type rootOptions struct {
-	configPath     string
-	format         string
-	minConfidence  string
-	paths          stringSlice
-	failOnFindings bool
-	stream         bool
-	streamInterval int
-	compact        bool
-	only           string
-	deletable      bool
-}
-
-type stringSlice []string
-
-func (s *stringSlice) String() string {
-	return fmt.Sprintf("%v", []string(*s))
-}
-
-func (s *stringSlice) Set(value string) error {
-	*s = append(*s, value)
-	return nil
-}
 
 func Execute(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		return printUsage(os.Stderr)
 	}
 
+	cmd.Register(cmd.NewScanCommand())
+	cmd.Register(cmd.NewInitCommand())
+	cmd.Register(cmd.NewRulesCommand())
+
 	switch args[0] {
 	case "version":
 		fmt.Println("prune version ", version.Version)
 		return nil
-	case "init":
-		return runInit(ctx, args[1:])
-	case "scan":
-		return runScan(ctx, args[1:])
-	case "rules":
-		return runRules(ctx, args[1:])
 	case "help", "-h", "--help":
 		return printUsage(os.Stdout)
 	default:
-		return fmt.Errorf("unknown command: %q", args[0])
+		c := cmd.Get(args[0])
+		if c == nil {
+			return fmt.Errorf("unknown command: %q", args[0])
+		}
+		return c.Run(ctx, args[1:])
 	}
 }
 
@@ -69,17 +47,4 @@ Commands:
   rules   List available rules
 `)
 	return err
-}
-
-func parseRootFlags(fs *flag.FlagSet, opts *rootOptions) {
-	fs.StringVar(&opts.configPath, "config", "prune.yaml", "Path to prune config")
-	fs.StringVar(&opts.format, "format", "pretty", "Output format: pretty, json, or ndjson")
-	fs.StringVar(&opts.minConfidence, "min-confidence", "safe", "Minimum confidence to report")
-	fs.Var(&opts.paths, "paths", "Paths to scan (repeatable)")
-	fs.BoolVar(&opts.failOnFindings, "fail-on-findings", false, "Exit with error if findings are found")
-	fs.BoolVar(&opts.stream, "stream", false, "Enable streaming mode with partial results")
-	fs.IntVar(&opts.streamInterval, "stream-interval", 250, "Interval in ms between stream flushes")
-	fs.BoolVar(&opts.compact, "compact", false, "Show only summary counts")
-	fs.StringVar(&opts.only, "only", "", "Show only findings with this confidence (safe, review, likely_dead)")
-	fs.BoolVar(&opts.deletable, "deletable", false, "Show only files that are safe to delete")
 }

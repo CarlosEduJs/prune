@@ -1,4 +1,4 @@
-package cli
+package cmd
 
 import (
 	"context"
@@ -9,7 +9,15 @@ import (
 	"prune/internal/config"
 )
 
-func runInit(_ context.Context, args []string) error {
+func NewInitCommand() *Command {
+	return &Command{
+		Name:  "init",
+		Usage: "Create a default prune.yaml",
+		Run:   runInit,
+	}
+}
+
+func runInit(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	outPath := fs.String("out", "prune.yaml", "Output config path")
 	if err := fs.Parse(args); err != nil {
