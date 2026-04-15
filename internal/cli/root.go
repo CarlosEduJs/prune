@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-)
 
-const version = "0.2.0-beta.1"
+	"prune/internal/version"
+)
 
 type rootOptions struct {
 	configPath     string
@@ -41,7 +41,7 @@ func Execute(ctx context.Context, args []string) error {
 
 	switch args[0] {
 	case "version":
-		fmt.Println("prune version ", version)
+		fmt.Println("prune version ", version.Version)
 		return nil
 	case "init":
 		return runInit(ctx, args[1:])
