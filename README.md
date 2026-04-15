@@ -1,7 +1,7 @@
 # Prune
 
 > [!NOTE]
-> **Prune is currently in Beta (v0.2.0-beta.1).** It is under active development, and features, CLI flags, or output formats may change before the stable release.
+> **Prune is currently in Beta (v0.3.0-beta.1).** It is under active development, and features, CLI flags, or output formats may change before the stable release.
 
 Static analysis tool designed to identify dead code in JavaScript and TypeScript projects (for now...).
 
@@ -87,7 +87,7 @@ Flags:
 Pretty Output
 
 ```bash
-Prune 0.2.0-beta.1 — 11 issues found in 9ms
+Prune 0.3.0-beta.1 — 11 issues found in 9ms
 
 ✔ SAFE (1)
 

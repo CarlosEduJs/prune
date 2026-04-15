@@ -80,7 +80,7 @@ const jsonLd = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Linux, macOS, Windows',
   url: BASE_URL,
-  softwareVersion: '0.2.0-beta.1',
+  softwareVersion: '0.3.0-beta.1',
   license: 'https://opensource.org/licenses/MIT',
   author: {
     '@type': 'Person',
