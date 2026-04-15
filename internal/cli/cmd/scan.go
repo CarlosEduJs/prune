@@ -23,6 +23,7 @@ type scanFlags struct {
 	failOnFindings bool
 	stream         bool
 	streamInterval int
+	streamSet      bool
 	compact        bool
 	only           string
 	deletable      bool
@@ -67,7 +68,7 @@ func NewScanCommand() *Command {
 
 func runScan(ctx context.Context, args []string) error {
 	start := time.Now()
-	fs := flag.NewFlagSet("scan", flag.ExitOnError)
+	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	opts := scanFlags{}
 	parseScanFlags(fs, &opts)
 
@@ -75,6 +76,22 @@ func runScan(ctx context.Context, args []string) error {
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "stream-interval":
+				opts.streamSet = true
+			case "stream":
+				opts.stream = true
+			case "paths":
+			case "deletable":
+			case "compact":
+			case "only":
+			case "fail-on-findings":
+			case "min-confidence":
+			case "format":
+			case "config":
+			}
+		})
 	}
 
 	cfg, err := config.Load(opts.configPath)
@@ -98,7 +115,7 @@ func runScan(ctx context.Context, args []string) error {
 	if opts.stream {
 		cfg.Scan.Stream.Enabled = true
 	}
-	if opts.streamInterval > 0 {
+	if opts.streamSet && opts.streamInterval > 0 {
 		cfg.Scan.Stream.IntervalMs = opts.streamInterval
 	}
 
