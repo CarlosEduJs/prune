@@ -11,8 +11,6 @@ import (
 	"prune/internal/rules"
 )
 
-var version = "0.2.0-beta.1"
-
 type FormatterOptions struct {
 	Duration  time.Duration
 	Compact   bool

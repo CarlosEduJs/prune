@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"prune/internal/rules"
+	"prune/internal/version"
 )
 
 var confidenceOrder = []string{"safe", "likely_dead", "review"}
@@ -191,7 +192,7 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 
 func (f prettyFormatter) header(count int, useColor bool) string {
 	var b strings.Builder
-	ver := "v" + version
+	ver := "v" + version.Version
 	noun := "issues"
 	if count == 1 {
 		noun = "issue"
