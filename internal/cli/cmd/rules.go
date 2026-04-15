@@ -1,4 +1,4 @@
-package cli
+package cmd
 
 import (
 	"context"
@@ -9,7 +9,15 @@ import (
 	"prune/internal/rules"
 )
 
-func runRules(_ context.Context, args []string) error {
+func NewRulesCommand() *Command {
+	return &Command{
+		Name:  "rules",
+		Usage: "List available rules",
+		Run:   runRules,
+	}
+}
+
+func runRules(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		return fmt.Errorf("unexpected arguments: %v", args)
 	}
