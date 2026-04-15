@@ -35,11 +35,11 @@ type importSpecRegexes struct {
 func buildImportSpecRegexes() importSpecRegexes {
 	return importSpecRegexes{
 		defaultImport:   regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`),
-		defaultNamed:    regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_$][\w$]*)\s*,\s*\{([^}]+)\}\s+from\s+["']([^"']+)["']`),
-		namedOnly:       regexp.MustCompile(`(?m)^\s*import\s*\{([^}]+)\}\s+from\s+["']([^"']+)["']`),
+		defaultNamed:    regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_$][\w$]*)\s*,\s*\{([^}]*)\}\s+from\s+["']([^"']+)["']`),
+		namedOnly:       regexp.MustCompile(`(?m)^\s*import\s*\{([^}]*)\}\s+from\s+["']([^"']+)["']`),
 		namespaceImport: regexp.MustCompile(`(?m)^\s*import\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`),
 		sideEffect:      regexp.MustCompile(`(?m)^\s*import\s+["']([^"']+)["']`),
 		requireDefault:  regexp.MustCompile(`(?m)^\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\(\s*["']([^"']+)["']\s*\)`),
-		requireNamed:    regexp.MustCompile(`(?m)^\s*(?:const|let|var)\s+\{([^}]+)}\s*=\s*require\(\s*["']([^"']+)["']\s*\)`),
+		requireNamed:    regexp.MustCompile(`(?m)^\s*(?:const|let|var)\s+\{([^}]*)}\s*=\s*require\(\s*["']([^"']+)["']\s*\)`),
 	}
 }

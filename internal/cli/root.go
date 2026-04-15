@@ -15,13 +15,9 @@ func Execute(ctx context.Context, args []string) error {
 		return printUsage(os.Stderr)
 	}
 
-	cmd.Register(cmd.NewScanCommand())
-	cmd.Register(cmd.NewInitCommand())
-	cmd.Register(cmd.NewRulesCommand())
-
 	switch args[0] {
 	case "version":
-		fmt.Println("prune version ", version.Version)
+		fmt.Println("prune version", version.Version)
 		return nil
 	case "help", "-h", "--help":
 		return printUsage(os.Stdout)
