@@ -10,20 +10,15 @@ Prune's analysis pipeline has four distinct stages: file collection, AST parsing
 
 ## Overview
 
-```
-prune.yaml
-    │
-    ▼
-scan.Collect()          ← walks filesystem, applies include/exclude globs
-    │
-    ▼
-js.Collector.Collect()  ← reads each file, runs Tree-sitter, extracts AST data
-    │
-    ▼
-js.applyRules()         ← correlates definitions and imports, emits findings
-    │
-    ▼
-report.Formatter        ← formats findings as table, JSON, or NDJSON
+```mermaid
+graph TD
+    A[prune.yaml]
+    B[scan.Collect()\nwalks filesystem, applies include/exclude globs]
+    C[js.Collector.Collect()\nreads each file, runs Tree-sitter, extracts AST data]
+    D[js.applyRules()\ncorrelates definitions and imports, emits findings]
+    E[report.Formatter\nformats findings as table, JSON, or NDJSON]
+
+    A --> B --> C --> D --> E
 ```
 
 ---
