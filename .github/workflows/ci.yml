@@ -24,5 +24,11 @@ jobs:
     - name: Build
       run: go build -v -o prune ./cmd/prune
 
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v7
+      with:
+        version: v2.10.1
+        args: --timeout=5m
+
     - name: Test
       run: go test -v ./...
