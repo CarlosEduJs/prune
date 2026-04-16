@@ -272,7 +272,7 @@ func collectExportSymbols(root astNode, content []byte, result *astResult) {
 				Name: "default",
 				Line: defaultLine,
 			})
-			if decl := node.ChildByFieldName("declaration"); decl != nil {
+			if decl := node.ChildByFieldName("declaration"); decl != nil { //nolint: gocritic
 				if decl.Type() == "function_declaration" || decl.Type() == "class_declaration" {
 					nameNode := decl.ChildByFieldName("name")
 					if nameNode != nil {

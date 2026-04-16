@@ -1,14 +1,13 @@
 package scan
 
 import (
-	"path/filepath"
 	"testing"
 
 	"prune/internal/config"
 )
 
 func TestCollectFilesIncludeExclude(t *testing.T) {
-	root := filepath.Join("testdata")
+	root := "testdata"
 	cfg := &config.Config{}
 	cfg.Scan.Paths = []string{root}
 	cfg.Scan.Include = []string{"**/*.js", "**/*.ts"}

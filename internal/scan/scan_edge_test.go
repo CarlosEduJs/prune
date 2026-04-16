@@ -2,14 +2,13 @@ package scan
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"prune/internal/config"
 )
 
 func TestCollectFilesDefaultPath(t *testing.T) {
-	root := filepath.Join("testdata")
+	root := "testdata"
 	if err := withWorkdir(root, func() error {
 		cfg := &config.Config{}
 		cfg.Scan.Include = []string{"**/*.js"}
@@ -27,7 +26,7 @@ func TestCollectFilesDefaultPath(t *testing.T) {
 }
 
 func withWorkdir(dir string, fn func() error) error {
-	old, err := filepath.Abs(".")
+	old, err := os.Getwd()
 	if err != nil {
 		return err
 	}
