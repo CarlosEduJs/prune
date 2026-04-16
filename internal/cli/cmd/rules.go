@@ -9,6 +9,7 @@ import (
 	"prune/internal/rules"
 )
 
+// NewRulesCommand returns a command that lists all available rules.
 func NewRulesCommand() *Command {
 	return &Command{
 		Name:  "rules",
@@ -17,6 +18,7 @@ func NewRulesCommand() *Command {
 	}
 }
 
+// runRules executes the rules command, printing all available rules in a table.
 func runRules(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		return fmt.Errorf("unexpected arguments: %v", args)

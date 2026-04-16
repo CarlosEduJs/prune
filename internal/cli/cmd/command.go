@@ -2,16 +2,14 @@ package cmd
 
 import (
 	"context"
-	"flag"
 )
 
 type CommandRunner func(ctx context.Context, args []string) error
 
 type Command struct {
-	Name    string
-	Run     CommandRunner
-	FlagSet *flag.FlagSet
-	Usage   string
+	Name  string
+	Run   CommandRunner
+	Usage string
 }
 
 var registry = map[string]*Command{}
@@ -31,5 +29,9 @@ func Get(name string) *Command {
 }
 
 func All() map[string]*Command {
-	return registry
+	result := make(map[string]*Command, len(registry))
+	for k, v := range registry {
+		result[k] = v
+	}
+	return result
 }
