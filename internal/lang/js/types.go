@@ -1,7 +1,9 @@
+// Package js provides JavaScript/TypeScript analysis capabilities.
 package js
 
 import "regexp"
 
+// ImportSpec represents a single import statement with its resolution details.
 type ImportSpec struct {
 	Source     string
 	Resolved   string
@@ -12,16 +14,19 @@ type ImportSpec struct {
 	IsReexport bool
 }
 
+// ExportSymbol represents a named export with its line number.
 type ExportSymbol struct {
 	Name string
 	Line int
 }
 
+// FlagOccurrence represents a detected flag (like TODO or FIXME) with its line.
 type FlagOccurrence struct {
 	Flag string
 	Line int
 }
 
+// importSpecRegexes holds compiled regular expressions for parsing import statements.
 type importSpecRegexes struct {
 	defaultImport   *regexp.Regexp
 	defaultNamed    *regexp.Regexp
@@ -32,6 +37,7 @@ type importSpecRegexes struct {
 	requireNamed    *regexp.Regexp
 }
 
+// buildImportSpecRegexes returns a compiled set of regex patterns for import parsing.
 func buildImportSpecRegexes() importSpecRegexes {
 	return importSpecRegexes{
 		defaultImport:   regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`),

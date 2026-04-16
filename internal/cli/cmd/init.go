@@ -9,6 +9,7 @@ import (
 	"prune/internal/config"
 )
 
+// NewInitCommand returns a command that creates a default prune.yaml config file.
 func NewInitCommand() *Command {
 	return &Command{
 		Name:  "init",
@@ -17,6 +18,7 @@ func NewInitCommand() *Command {
 	}
 }
 
+// runInit executes the init command, writing a default config to the specified path.
 func runInit(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	outPath := fs.String("out", "prune.yaml", "Output config path")

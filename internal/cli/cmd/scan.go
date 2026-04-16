@@ -16,17 +16,18 @@ import (
 )
 
 type scanFlags struct {
-	configPath     string
-	format         string
-	minConfidence  string
-	paths          stringSlice
-	failOnFindings bool
-	stream         bool
-	streamInterval int
-	streamSet      bool
-	compact        bool
-	only           string
-	deletable      bool
+	configPath        string
+	format            string
+	minConfidence     string
+	paths             stringSlice
+	failOnFindings    bool
+	stream            bool
+	streamInterval    int
+	streamSet         bool
+	streamIntervalSet bool
+	compact           bool
+	only              string
+	deletable         bool
 }
 
 type stringSlice []string
@@ -54,15 +55,10 @@ func parseScanFlags(fs *flag.FlagSet, opts *scanFlags) {
 }
 
 func NewScanCommand() *Command {
-	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
-	opts := scanFlags{}
-	parseScanFlags(fs, &opts)
-
 	return &Command{
-		Name:    "scan",
-		FlagSet: fs,
-		Usage:   "Analyze project and report findings",
-		Run:     runScan,
+		Name:  "scan",
+		Usage: "Analyze project and report findings",
+		Run:   runScan,
 	}
 }
 
@@ -79,9 +75,9 @@ func runScan(ctx context.Context, args []string) error {
 		fs.Visit(func(f *flag.Flag) {
 			switch f.Name {
 			case "stream-interval":
-				opts.streamSet = true
+				opts.streamIntervalSet = true
 			case "stream":
-				opts.stream = true
+				opts.streamSet = true
 			case "paths":
 			case "deletable":
 			case "compact":
@@ -112,10 +108,10 @@ func runScan(ctx context.Context, args []string) error {
 		}
 	}
 
-	if opts.stream {
-		cfg.Scan.Stream.Enabled = true
+	if opts.streamSet {
+		cfg.Scan.Stream.Enabled = opts.stream
 	}
-	if opts.streamSet && opts.streamInterval > 0 {
+	if opts.streamIntervalSet && opts.streamInterval > 0 {
 		cfg.Scan.Stream.IntervalMs = opts.streamInterval
 	}
 
@@ -141,8 +137,8 @@ func runScan(ctx context.Context, args []string) error {
 				if err != nil {
 					return err
 				}
-				os.Stdout.Write(data)
-				return nil
+				_, err = os.Stdout.Write(data)
+				return err
 			}
 			streamedOutput = true
 		}
