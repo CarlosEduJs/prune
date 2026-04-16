@@ -217,6 +217,61 @@ Regardless of format, findings below the `--min-confidence` threshold are exclud
 `--min-confidence likely_dead` excludes `safe`-level findings.  
 `--min-confidence review` includes only `review`-level findings.
 
+---
+
+## Additional Filter Flags
+
+The `scan` command supports three additional flags for filtering output:
+
+### `--compact`
+
+Omits individual findings and outputs only the summary counts:
+
+```bash
+prune scan --compact
+```
+
+**Example output:**
+
+```bash
+Prune 0.3.0-beta.1 — 4 issues found in 120ms
+
+TYPE                 COUNT
+possible_dynamic        1
+suspicious_dynamic       1
+unused_export           1
+unused_file             1
+
+CONFIDENCE   COUNT
+SAFE              2
+REVIEW            2
+
+  Total        4
+
+Done in 120ms
+```
+
+### `--only <level>`
+
+Shows only findings matching the specified confidence level. Unlike `--min-confidence` (which filters out lower levels), `--only` shows **only** that level:
+
+```bash
+# Show only likely_dead findings
+prune scan --only likely_dead
+```
+
+Valid values: `safe`, `review`, `likely_dead`.
+
+### `--deletable`
+
+Shows only files that are safe to delete — files with no living imports:
+
+```bash
+prune scan --deletable
+```
+
+When combined with `--min-confidence`, this filters to only `safe`-level deletable files.
+
 <Callout type="warn">
 The ranking is counter-intuitive: `safe` findings are the most certain candidates for deletion, but have the lowest rank. A higher `--min-confidence` value means more uncertain findings.
 </Callout>

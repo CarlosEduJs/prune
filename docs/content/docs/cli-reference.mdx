@@ -83,6 +83,9 @@ prune scan [flags]
 | `--fail-on-findings` | bool | `false` | Exit with a non-zero status code if any findings match the confidence filter |
 | `--stream` | bool | `false` | Enable streaming mode — emit findings incrementally as files are processed |
 | `--stream-interval` | int | `250` | Interval in milliseconds between streaming flushes |
+| `--compact` | bool | `false` | Show only summary counts, without individual findings |
+| `--only` | string | `""` | Show only findings with this confidence level: `safe`, `review`, or `likely_dead` |
+| `--deletable` | bool | `false` | Show only files that are safe to delete (no living imports) |
 
 **Examples:**
 
@@ -101,6 +104,15 @@ prune scan --fail-on-findings
 
 # Override scan paths
 prune scan --paths src/components --paths src/lib
+
+# Show only summary counts
+prune scan --compact
+
+# Show only findings with likely_dead confidence
+prune scan --only likely_dead
+
+# Show only files safe to delete
+prune scan --deletable
 
 # Stream findings as NDJSON in real time
 prune scan --stream --format ndjson
