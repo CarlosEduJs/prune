@@ -140,7 +140,7 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 			reset = colorReset
 		}
 
-		b.WriteString(fmt.Sprintf("%s%s %s%s (%d)\n", color, icon, label, reset, total))
+		fmt.Fprintf(&b, "%s%s %s%s (%d)\n", color, icon, label, reset, total)
 		b.WriteString("\n")
 
 		files := make([]string, 0, len(fileGroups))
@@ -160,9 +160,9 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 				displayFile = "(no file)"
 			}
 			if useColor {
-				b.WriteString(fmt.Sprintf("  %s%s%s\n", colorCyan, displayFile, colorReset))
+				fmt.Fprintf(&b, "  %s%s%s\n", colorCyan, displayFile, colorReset)
 			} else {
-				b.WriteString(fmt.Sprintf("  %s\n", displayFile))
+				fmt.Fprintf(&b, "  %s\n", displayFile)
 			}
 
 			for _, finding := range ff {
@@ -177,9 +177,9 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 				}
 
 				if useColor {
-					b.WriteString(fmt.Sprintf("  %s└─%s %s\n", colorDim, colorReset, detail))
+					fmt.Fprintf(&b, "  %s└─%s %s\n", colorDim, colorReset, detail)
 				} else {
-					b.WriteString(fmt.Sprintf("  └─ %s\n", detail))
+					fmt.Fprintf(&b, "  └─ %s\n", detail)
 				}
 			}
 			b.WriteString("\n")
@@ -200,9 +200,9 @@ func (f prettyFormatter) header(count int, useColor bool) string {
 	dur := f.opts.Duration.Round(time.Millisecond)
 
 	if useColor {
-		b.WriteString(fmt.Sprintf("%s%sPrune %s%s — %d %s found in %s\n", colorBold, colorCyan, ver, colorReset, count, noun, dur))
+		fmt.Fprintf(&b, "%s%sPrune %s%s — %d %s found in %s\n", colorBold, colorCyan, ver, colorReset, count, noun, dur)
 	} else {
-		b.WriteString(fmt.Sprintf("Prune %s — %d %s found in %s\n", ver, count, noun, dur))
+		fmt.Fprintf(&b, "Prune %s — %d %s found in %s\n", ver, count, noun, dur)
 	}
 	return b.String()
 }
@@ -240,7 +240,7 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 	}
 	for _, t := range typeOrder {
 		if c, ok := typeCounts[t.key]; ok && c > 0 {
-			b.WriteString(fmt.Sprintf("  %-12s %d\n", t.label, c))
+			fmt.Fprintf(&b, "  %-12s %d\n", t.label, c)
 		}
 	}
 
@@ -258,18 +258,18 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 			color = confidenceColors[confidence]
 			reset = colorReset
 		}
-		b.WriteString(fmt.Sprintf("  %s%-12s%s %d\n", color, label, reset, c))
+		fmt.Fprintf(&b, "  %s%-12s%s %d\n", color, label, reset, c)
 	}
 
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  Total        %d\n", len(findings)))
+	fmt.Fprintf(&b, "  Total        %d\n", len(findings))
 	b.WriteString("\n")
 
 	dur := f.opts.Duration.Round(time.Millisecond)
 	if useColor {
-		b.WriteString(fmt.Sprintf("%sDone in %s%s\n", colorDim, dur, colorReset))
+		fmt.Fprintf(&b, "%sDone in %s%s\n", colorDim, dur, colorReset)
 	} else {
-		b.WriteString(fmt.Sprintf("Done in %s\n", dur))
+		fmt.Fprintf(&b, "Done in %s\n", dur)
 	}
 
 	return b.String()

@@ -64,49 +64,13 @@ func NewScanCommand() *Command {
 
 func runScan(ctx context.Context, args []string) error {
 	start := time.Now()
-	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
-	opts := scanFlags{}
-	parseScanFlags(fs, &opts)
 
-	if len(args) > 0 {
-		if err := fs.Parse(args); err != nil {
-			return err
-		}
-		fs.Visit(func(f *flag.Flag) {
-			switch f.Name {
-			case "stream-interval":
-				opts.streamIntervalSet = true
-			case "stream":
-				opts.streamSet = true
-			case "paths":
-			case "deletable":
-			case "compact":
-			case "only":
-			case "fail-on-findings":
-			case "min-confidence":
-			case "format":
-			case "config":
-			}
-		})
-	}
-
-	cfg, err := config.Load(opts.configPath)
+	cfg, opts, err := parseFlagsAndConfig(args)
 	if err != nil {
-		return fmt.Errorf("loading config: %w", err)
+		return err
 	}
 
-	if len(opts.paths) > 0 {
-		cfg.Scan.Paths = opts.paths
-	} else {
-		configDir, err := filepath.Abs(filepath.Dir(opts.configPath))
-		if err == nil {
-			for i, p := range cfg.Scan.Paths {
-				if !filepath.IsAbs(p) {
-					cfg.Scan.Paths[i] = filepath.Join(configDir, p)
-				}
-			}
-		}
-	}
+	applyPathOverrides(cfg, opts.paths, opts.configPath)
 
 	if opts.streamSet {
 		cfg.Scan.Stream.Enabled = opts.stream
@@ -115,38 +79,7 @@ func runScan(ctx context.Context, args []string) error {
 		cfg.Scan.Stream.IntervalMs = opts.streamInterval
 	}
 
-	var findings []rules.Finding
-	streamedOutput := false
-
-	if cfg.Scan.Stream.Enabled {
-		var streamHandler js.StreamHandler
-		format := opts.format
-
-		if format == "json" && cfg.Scan.Stream.Enabled {
-			format = "ndjson"
-		}
-
-		if format == "ndjson" {
-			streamHandler = func(batchFindings []rules.Finding) error {
-				filtered := report.FilterByConfidence(batchFindings, opts.minConfidence)
-				out, err := report.NewFormatter("ndjson")
-				if err != nil {
-					return err
-				}
-				data, err := out.Format(filtered)
-				if err != nil {
-					return err
-				}
-				_, err = os.Stdout.Write(data)
-				return err
-			}
-			streamedOutput = true
-		}
-
-		findings, err = js.AnalyzeStreaming(ctx, cfg, streamHandler)
-	} else {
-		findings, err = analyzeLanguage(ctx, cfg)
-	}
+	findings, streamedOutput, err := runAnalysis(ctx, cfg, opts)
 	if err != nil {
 		return err
 	}
@@ -155,6 +88,93 @@ func runScan(ctx context.Context, args []string) error {
 		return nil
 	}
 
+	return outputResults(findings, opts, cfg, start)
+}
+
+func parseFlagsAndConfig(args []string) (*config.Config, scanFlags, error) {
+	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
+	opts := scanFlags{}
+	parseScanFlags(fs, &opts)
+
+	if len(args) > 0 {
+		if err := fs.Parse(args); err != nil {
+			return nil, opts, err
+		}
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "stream-interval":
+				opts.streamIntervalSet = true
+			case "stream":
+				opts.streamSet = true
+			}
+		})
+	}
+
+	cfg, err := config.Load(opts.configPath)
+	if err != nil {
+		return nil, opts, fmt.Errorf("loading config: %w", err)
+	}
+
+	return cfg, opts, nil
+}
+
+func applyPathOverrides(cfg *config.Config, paths []string, configPath string) {
+	if len(paths) > 0 {
+		cfg.Scan.Paths = paths
+		return
+	}
+
+	configDir, err := filepath.Abs(filepath.Dir(configPath))
+	if err != nil {
+		return
+	}
+	for i, p := range cfg.Scan.Paths {
+		if !filepath.IsAbs(p) {
+			cfg.Scan.Paths[i] = filepath.Join(configDir, p)
+		}
+	}
+}
+
+func runAnalysis(ctx context.Context, cfg *config.Config, opts scanFlags) ([]rules.Finding, bool, error) {
+	if !cfg.Scan.Stream.Enabled {
+		findings, err := analyzeLanguage(ctx, cfg)
+		return findings, false, err
+	}
+
+	format := opts.format
+	if format == "json" {
+		format = "ndjson"
+	}
+
+	var streamHandler js.StreamHandler
+	streamedOutput := false
+
+	if format == "ndjson" {
+		streamHandler = createStreamingHandler(opts)
+		streamedOutput = true
+	}
+
+	findings, err := js.AnalyzeStreaming(ctx, cfg, streamHandler)
+	return findings, streamedOutput, err
+}
+
+func createStreamingHandler(opts scanFlags) js.StreamHandler {
+	return func(batchFindings []rules.Finding) error {
+		filtered := report.FilterByConfidence(batchFindings, opts.minConfidence)
+		out, err := report.NewFormatter("ndjson")
+		if err != nil {
+			return err
+		}
+		data, err := out.Format(filtered)
+		if err != nil {
+			return err
+		}
+		_, err = os.Stdout.Write(data)
+		return err
+	}
+}
+
+func outputResults(findings []rules.Finding, opts scanFlags, cfg *config.Config, start time.Time) error {
 	out, err := report.NewFormatter(opts.format, report.FormatterOptions{
 		Duration:  time.Since(start),
 		Compact:   opts.compact,

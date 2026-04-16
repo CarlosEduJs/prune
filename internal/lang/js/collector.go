@@ -392,18 +392,6 @@ func resolveLocalImports(from string, specs []ImportSpec, index map[string]scan.
 	return resolved
 }
 
-func resolveImportSpec(from string, spec ImportSpec, index map[string]scan.FileEntry) string {
-	if !strings.HasPrefix(spec.Source, ".") {
-		return ""
-	}
-	base := filepath.Dir(from)
-	candidate := filepath.ToSlash(filepath.Clean(filepath.Join(base, spec.Source)))
-	if target, ok := resolveFile(candidate, index); ok {
-		return target
-	}
-	return ""
-}
-
 func mergeImportSpecs(base []ImportSpec, overrides []ImportSpec) []ImportSpec {
 	if len(overrides) == 0 {
 		return base

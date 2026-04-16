@@ -74,7 +74,7 @@ func (r *Resolver) Classify(source string) ImportType {
 		return ImportTypeRelative
 	}
 
-	if r.aliasPaths != nil && len(r.aliasPaths) > 0 {
+	if len(r.aliasPaths) > 0 {
 		for alias := range r.aliasPaths {
 			if strings.HasPrefix(source, strings.TrimSuffix(alias, "/*")) {
 				return ImportTypeAlias

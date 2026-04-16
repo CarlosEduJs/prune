@@ -16,6 +16,7 @@ func main() {
 
 	if err := cli.Execute(ctx, os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		//nolint: gocritic
 		os.Exit(1)
 	}
 }
