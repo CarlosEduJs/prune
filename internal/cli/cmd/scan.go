@@ -150,7 +150,11 @@ func runAnalysis(ctx context.Context, cfg *config.Config, opts scanFlags) ([]rul
 	streamedOutput := false
 
 	if format == "ndjson" {
-		streamHandler = createStreamingHandler(opts)
+		formatter, err := report.NewFormatter("ndjson")
+		if err != nil {
+			return nil, false, err
+		}
+		streamHandler = createStreamingHandler(formatter, opts)
 		streamedOutput = true
 	}
 
@@ -158,14 +162,10 @@ func runAnalysis(ctx context.Context, cfg *config.Config, opts scanFlags) ([]rul
 	return findings, streamedOutput, err
 }
 
-func createStreamingHandler(opts scanFlags) js.StreamHandler {
+func createStreamingHandler(formatter report.Formatter, opts scanFlags) js.StreamHandler {
 	return func(batchFindings []rules.Finding) error {
 		filtered := report.FilterByConfidence(batchFindings, opts.minConfidence)
-		out, err := report.NewFormatter("ndjson")
-		if err != nil {
-			return err
-		}
-		data, err := out.Format(filtered)
+		data, err := formatter.Format(filtered)
 		if err != nil {
 			return err
 		}
@@ -213,6 +213,6 @@ func analyzeLanguage(ctx context.Context, cfg *config.Config) ([]rules.Finding, 
 	case "js-ts":
 		return js.Analyze(ctx, cfg)
 	default:
-		return nil, errors.New("unsupported language")
+		return nil, fmt.Errorf("unsupported language: %q", cfg.Project.Language)
 	}
 }

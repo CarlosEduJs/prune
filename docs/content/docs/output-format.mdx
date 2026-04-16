@@ -237,10 +237,10 @@ prune scan --compact
 Prune 0.3.0-beta.1 — 4 issues found in 120ms
 
 TYPE                 COUNT
-possible_dynamic        1
-suspicious_dynamic       1
-unused_export           1
-unused_file             1
+possible_dynamic_usage    1
+suspicious_dynamic_usage  1
+unused_export         1
+unused_file           1
 
 CONFIDENCE   COUNT
 SAFE              2
@@ -253,7 +253,7 @@ Done in 120ms
 
 ### `--only <level>`
 
-Shows only findings matching the specified confidence level. Unlike `--min-confidence` (which filters out lower levels), `--only` shows **only** that level:
+Shows findings matching the specified confidence level exactly. Unlike `--min-confidence` (which filters out lower levels), `--only` returns just that level:
 
 ```bash
 # Show only likely_dead findings

@@ -21,6 +21,9 @@ func init() {
 }
 
 func Register(cmd *Command) {
+	if cmd == nil {
+		return
+	}
 	registry[cmd.Name] = cmd
 }
 
