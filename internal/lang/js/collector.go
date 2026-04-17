@@ -261,6 +261,89 @@ func detectDynamic(content string, cfg *config.Config) []string {
 	return indicators
 }
 
+type DynamicIndicator struct {
+	Pattern    string
+	IsHighRisk bool
+	SafeMatch  string
+}
+
+func classifyDynamicIndicators(indicators []string, cfg *config.Config) []DynamicIndicator {
+	result := []DynamicIndicator{}
+
+	highRiskPatterns := getHighRiskPatterns(cfg)
+	safePatterns := getSafePatterns(cfg)
+
+	for _, indicator := range indicators {
+		di := DynamicIndicator{Pattern: indicator}
+
+		for _, risk := range highRiskPatterns {
+			if strings.Contains(indicator, risk) {
+				di.IsHighRisk = true
+				break
+			}
+		}
+
+		if !di.IsHighRisk {
+			for _, safe := range safePatterns {
+				if strings.Contains(indicator, safe) {
+					di.SafeMatch = safe
+					break
+				}
+			}
+		}
+
+		result = append(result, di)
+	}
+
+	return result
+}
+
+func getHighRiskPatterns(cfg *config.Config) []string {
+	defaults := []string{"eval", "Function", "import("}
+
+	rule, ok := cfg.Rules["unused_function"]
+	if !ok {
+		return defaults
+	}
+
+	if len(rule.HighRiskPatterns) > 0 {
+		return rule.HighRiskPatterns
+	}
+
+	return defaults
+}
+
+func getSafePatterns(cfg *config.Config) []string {
+	defaults := []string{
+		"window.", "document.", "Math.", "JSON.",
+		"Object.", "Array.", "process.", "Buffer.",
+		"setTimeout", "setInterval",
+	}
+
+	rule, ok := cfg.Rules["unused_function"]
+	if !ok {
+		return defaults
+	}
+
+	if len(rule.SafePatterns) > 0 {
+		return rule.SafePatterns
+	}
+
+	return defaults
+}
+
+func hasHighRiskDynamic(indicators []string, cfg *config.Config) bool {
+	highRisk := getHighRiskPatterns(cfg)
+	for _, ind := range indicators {
+		for _, risk := range highRisk {
+			if strings.Contains(ind, risk) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func compileRegexes(patterns []string) []*regexp.Regexp {
 	regexes := []*regexp.Regexp{}
 	for _, pattern := range patterns {
