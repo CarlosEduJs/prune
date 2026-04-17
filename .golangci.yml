@@ -10,13 +10,12 @@ linters:
     - unused
     - gocritic
     - gocyclo
+
   settings:
     gocritic:
       disabled-checks:
         - ifElseChain
 
-issues:
-  exclude-use-default: false
   exclusions:
     rules:
       - path: _test\.go
