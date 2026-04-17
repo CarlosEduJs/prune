@@ -27,7 +27,7 @@ archives:
       {{ .ProjectName }}_{{ .Version }}_darwin_{{- if eq .Arch "amd64" }}x86_64{{- else }}{{ .Arch }}{{ end }}
 
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  name_template: "{{ .ProjectName }}_{{ .Version }}_macos_checksums.txt"
 
 changelog:
   sort: asc

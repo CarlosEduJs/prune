@@ -59,7 +59,7 @@ archives:
         formats: [zip]
 
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  name_template: "{{ .ProjectName }}_{{ .Version }}_linux-windows_checksums.txt"
 
 changelog:
   sort: asc
