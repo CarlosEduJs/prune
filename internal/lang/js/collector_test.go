@@ -36,7 +36,7 @@ func TestFlagHitExists(t *testing.T) {
 func TestGetHighRiskPatterns(t *testing.T) {
 	t.Run("default patterns", func(t *testing.T) {
 		cfg := &config.Config{}
-		patterns := getHighRiskPatterns(cfg)
+		patterns := getHighRiskPatterns(cfg, "unused_function")
 		if len(patterns) != 3 {
 			t.Fatalf("expected 3 default patterns, got %d: %v", len(patterns), patterns)
 		}
@@ -50,7 +50,7 @@ func TestGetHighRiskPatterns(t *testing.T) {
 				},
 			},
 		}
-		patterns := getHighRiskPatterns(cfg)
+		patterns := getHighRiskPatterns(cfg, "unused_function")
 		if len(patterns) != 2 {
 			t.Fatalf("expected 2 custom patterns, got %d: %v", len(patterns), patterns)
 		}
@@ -59,7 +59,7 @@ func TestGetHighRiskPatterns(t *testing.T) {
 		}
 	})
 
-	t.Run("unused_function not configured", func(t *testing.T) {
+	t.Run("rule key not configured", func(t *testing.T) {
 		cfg := &config.Config{
 			Rules: map[string]config.RuleConfig{
 				"unused_variable": {
@@ -67,7 +67,7 @@ func TestGetHighRiskPatterns(t *testing.T) {
 				},
 			},
 		}
-		patterns := getHighRiskPatterns(cfg)
+		patterns := getHighRiskPatterns(cfg, "unused_function")
 		if len(patterns) != 3 {
 			t.Fatalf("expected 3 defaults when unused_function not set, got %d", len(patterns))
 		}
@@ -77,7 +77,7 @@ func TestGetHighRiskPatterns(t *testing.T) {
 func TestGetSafePatterns(t *testing.T) {
 	t.Run("default patterns", func(t *testing.T) {
 		cfg := &config.Config{}
-		patterns := getSafePatterns(cfg)
+		patterns := getSafePatterns(cfg, "unused_function")
 		if len(patterns) != 11 {
 			t.Fatalf("expected 11 default patterns, got %d: %v", len(patterns), patterns)
 		}
@@ -101,7 +101,7 @@ func TestGetSafePatterns(t *testing.T) {
 				},
 			},
 		}
-		patterns := getSafePatterns(cfg)
+		patterns := getSafePatterns(cfg, "unused_function")
 		if len(patterns) != 1 {
 			t.Fatalf("expected 1 custom pattern, got %d: %v", len(patterns), patterns)
 		}
@@ -115,31 +115,31 @@ func TestHasHighRiskDynamic(t *testing.T) {
 	cfg := &config.Config{}
 
 	t.Run("no indicators", func(t *testing.T) {
-		if hasHighRiskDynamic([]string{}, cfg) {
+		if hasHighRiskDynamic([]string{}, cfg, "unused_function") {
 			t.Fatal("expected false for empty indicators")
 		}
 	})
 
 	t.Run("no high-risk indicators", func(t *testing.T) {
-		if hasHighRiskDynamic([]string{"console.log", "Math.random"}, cfg) {
+		if hasHighRiskDynamic([]string{"console.log", "Math.random"}, cfg, "unused_function") {
 			t.Fatal("expected false for safe patterns")
 		}
 	})
 
 	t.Run("eval detected", func(t *testing.T) {
-		if !hasHighRiskDynamic([]string{"eval", "console.log"}, cfg) {
+		if !hasHighRiskDynamic([]string{"eval", "console.log"}, cfg, "unused_function") {
 			t.Fatal("expected true for eval")
 		}
 	})
 
 	t.Run("Function detected", func(t *testing.T) {
-		if !hasHighRiskDynamic([]string{"new Function()"}, cfg) {
+		if !hasHighRiskDynamic([]string{"new Function()"}, cfg, "unused_function") {
 			t.Fatal("expected true for Function")
 		}
 	})
 
 	t.Run("import() detected", func(t *testing.T) {
-		if !hasHighRiskDynamic([]string{"import('./module')"}, cfg) {
+		if !hasHighRiskDynamic([]string{"import('./module')"}, cfg, "unused_function") {
 			t.Fatal("expected true for import()")
 		}
 	})
@@ -150,7 +150,7 @@ func TestClassifyDynamicIndicators(t *testing.T) {
 
 	t.Run("high-risk indicator", func(t *testing.T) {
 		indicators := []string{"eval"}
-		result := classifyDynamicIndicators(indicators, cfg)
+		result := classifyDynamicIndicators(indicators, cfg, "unused_function")
 		if len(result) != 1 {
 			t.Fatalf("expected 1 result, got %d", len(result))
 		}
@@ -161,7 +161,7 @@ func TestClassifyDynamicIndicators(t *testing.T) {
 
 	t.Run("safe indicator", func(t *testing.T) {
 		indicators := []string{"console.log"}
-		result := classifyDynamicIndicators(indicators, cfg)
+		result := classifyDynamicIndicators(indicators, cfg, "unused_function")
 		if len(result) != 1 {
 			t.Fatalf("expected 1 result, got %d", len(result))
 		}
@@ -175,7 +175,7 @@ func TestClassifyDynamicIndicators(t *testing.T) {
 
 	t.Run("medium-risk indicator", func(t *testing.T) {
 		indicators := []string{"someUnknownPattern"}
-		result := classifyDynamicIndicators(indicators, cfg)
+		result := classifyDynamicIndicators(indicators, cfg, "unused_function")
 		if len(result) != 1 {
 			t.Fatalf("expected 1 result, got %d", len(result))
 		}
@@ -189,7 +189,7 @@ func TestClassifyDynamicIndicators(t *testing.T) {
 
 	t.Run("multiple indicators", func(t *testing.T) {
 		indicators := []string{"eval", "console.log", "Math.max", "unknown"}
-		result := classifyDynamicIndicators(indicators, cfg)
+		result := classifyDynamicIndicators(indicators, cfg, "unused_function")
 		if len(result) != 4 {
 			t.Fatalf("expected 4 results, got %d", len(result))
 		}
