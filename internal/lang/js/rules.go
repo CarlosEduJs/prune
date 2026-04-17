@@ -154,7 +154,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_function", "default", "likely_dead")
-			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg) {
+			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_function") {
 				confidence = confidenceFor(cfg, "unused_function", "if_high_risk_dynamic", "review")
 			}
 			line := 1
@@ -192,7 +192,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_variable", "default", "safe")
-			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg) {
+			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_variable") {
 				confidence = confidenceFor(cfg, "unused_variable", "if_high_risk_dynamic", "review")
 			}
 			line := 1

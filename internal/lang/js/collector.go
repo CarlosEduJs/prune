@@ -267,11 +267,11 @@ type DynamicIndicator struct {
 	SafeMatch  string
 }
 
-func classifyDynamicIndicators(indicators []string, cfg *config.Config) []DynamicIndicator {
+func classifyDynamicIndicators(indicators []string, cfg *config.Config, ruleKey string) []DynamicIndicator {
 	result := []DynamicIndicator{}
 
-	highRiskPatterns := getHighRiskPatterns(cfg)
-	safePatterns := getSafePatterns(cfg)
+	highRiskPatterns := getHighRiskPatterns(cfg, ruleKey)
+	safePatterns := getSafePatterns(cfg, ruleKey)
 
 	for _, indicator := range indicators {
 		di := DynamicIndicator{Pattern: indicator}
@@ -298,14 +298,14 @@ func classifyDynamicIndicators(indicators []string, cfg *config.Config) []Dynami
 	return result
 }
 
-func getHighRiskPatterns(cfg *config.Config) []string {
+func getHighRiskPatterns(cfg *config.Config, ruleKey string) []string {
 	defaults := []string{"eval", "Function", "import("}
 
 	if cfg == nil || cfg.Rules == nil {
 		return defaults
 	}
 
-	rule, ok := cfg.Rules["unused_function"]
+	rule, ok := cfg.Rules[ruleKey]
 	if !ok {
 		return defaults
 	}
@@ -317,7 +317,7 @@ func getHighRiskPatterns(cfg *config.Config) []string {
 	return defaults
 }
 
-func getSafePatterns(cfg *config.Config) []string {
+func getSafePatterns(cfg *config.Config, ruleKey string) []string {
 	defaults := []string{
 		"window", "document", "Math", "JSON",
 		"Object", "Array", "process", "Buffer",
@@ -328,7 +328,7 @@ func getSafePatterns(cfg *config.Config) []string {
 		return defaults
 	}
 
-	rule, ok := cfg.Rules["unused_function"]
+	rule, ok := cfg.Rules[ruleKey]
 	if !ok {
 		return defaults
 	}
@@ -340,8 +340,8 @@ func getSafePatterns(cfg *config.Config) []string {
 	return defaults
 }
 
-func hasHighRiskDynamic(indicators []string, cfg *config.Config) bool {
-	highRisk := getHighRiskPatterns(cfg)
+func hasHighRiskDynamic(indicators []string, cfg *config.Config, ruleKey string) bool {
+	highRisk := getHighRiskPatterns(cfg, ruleKey)
 	for _, ind := range indicators {
 		for _, risk := range highRisk {
 			if strings.Contains(ind, risk) {
