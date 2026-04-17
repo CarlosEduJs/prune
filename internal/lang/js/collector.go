@@ -301,6 +301,10 @@ func classifyDynamicIndicators(indicators []string, cfg *config.Config) []Dynami
 func getHighRiskPatterns(cfg *config.Config) []string {
 	defaults := []string{"eval", "Function", "import("}
 
+	if cfg == nil || cfg.Rules == nil {
+		return defaults
+	}
+
 	rule, ok := cfg.Rules["unused_function"]
 	if !ok {
 		return defaults
@@ -315,9 +319,13 @@ func getHighRiskPatterns(cfg *config.Config) []string {
 
 func getSafePatterns(cfg *config.Config) []string {
 	defaults := []string{
-		"window.", "document.", "Math.", "JSON.",
-		"Object.", "Array.", "process.", "Buffer.",
-		"setTimeout", "setInterval",
+		"window", "document", "Math", "JSON",
+		"Object", "Array", "process", "Buffer",
+		"setTimeout", "setInterval", "console",
+	}
+
+	if cfg == nil || cfg.Rules == nil {
+		return defaults
 	}
 
 	rule, ok := cfg.Rules["unused_function"]
