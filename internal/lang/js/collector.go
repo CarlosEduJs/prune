@@ -572,21 +572,6 @@ func flagHitExists(hits []FlagOccurrence, flag string) bool {
 	return false
 }
 
-func mergeFlagHits(base []FlagOccurrence, hits []FlagOccurrence) []FlagOccurrence {
-	combined := make([]FlagOccurrence, 0, len(base)+len(hits))
-	combined = append(combined, base...)
-	for _, hit := range hits {
-		if hit.Flag == "" {
-			continue
-		}
-		if flagHitExists(combined, hit.Flag) {
-			continue
-		}
-		combined = append(combined, hit)
-	}
-	return combined
-}
-
 func resolveFile(path string, index map[string]scan.FileEntry) (string, bool) {
 	if _, ok := index[path]; ok {
 		return path, true
