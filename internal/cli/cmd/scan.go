@@ -25,6 +25,8 @@ type scanFlags struct {
 	streamInterval    int
 	streamSet         bool
 	streamIntervalSet bool
+	streamBatchSize  int
+	streamBatchSet   bool
 	compact           bool
 	only              string
 	deletable         bool
@@ -49,6 +51,7 @@ func parseScanFlags(fs *flag.FlagSet, opts *scanFlags) {
 	fs.BoolVar(&opts.failOnFindings, "fail-on-findings", false, "Exit with error if findings are found")
 	fs.BoolVar(&opts.stream, "stream", false, "Enable streaming mode with partial results")
 	fs.IntVar(&opts.streamInterval, "stream-interval", 250, "Interval in ms between stream flushes")
+	fs.IntVar(&opts.streamBatchSize, "stream-batch-size", 50, "Number of files to process per batch")
 	fs.BoolVar(&opts.compact, "compact", false, "Show only summary counts")
 	fs.StringVar(&opts.only, "only", "", "Show only findings with this confidence (safe, review, likely_dead)")
 	fs.BoolVar(&opts.deletable, "deletable", false, "Show only files that are safe to delete")
@@ -78,6 +81,9 @@ func runScan(ctx context.Context, args []string) error {
 	if opts.streamIntervalSet && opts.streamInterval > 0 {
 		cfg.Scan.Stream.IntervalMs = opts.streamInterval
 	}
+	if opts.streamBatchSet && opts.streamBatchSize > 0 {
+		cfg.Scan.Stream.BatchSize = opts.streamBatchSize
+	}
 
 	findings, streamedOutput, err := runAnalysis(ctx, cfg, opts)
 	if err != nil {
@@ -106,6 +112,8 @@ func parseFlagsAndConfig(args []string) (*config.Config, scanFlags, error) {
 				opts.streamIntervalSet = true
 			case "stream":
 				opts.streamSet = true
+			case "stream-batch-size":
+				opts.streamBatchSet = true
 			}
 		})
 	}

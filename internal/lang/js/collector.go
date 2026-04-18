@@ -81,6 +81,105 @@ type Collected struct {
 	DynamicIndicators map[string][]string
 }
 
+type fileResult struct {
+	imports         []string
+	importSpecs     []ImportSpec
+	importsResolved []string
+	exports         []string
+	exportSymbols   []ExportSymbol
+	identifiers     map[string]int
+	usageCounts   map[string]int
+	functionDecls []string
+	variableDecls []string
+	functionLines map[string]int
+	variableLines map[string]int
+	featureFlagHits []FlagOccurrence
+	dynamicIndicators []string
+}
+
+func (c *Collector) collectOneFile(ctx context.Context, entry scan.FileEntry, fileIndex map[string]scan.FileEntry, flagRegexes []*regexp.Regexp) (*fileResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	content, err := readFile(entry.Path)
+	if err != nil {
+		return nil, fmt.Errorf("reading file %q: %w", entry.Path, err)
+	}
+
+	result := &fileResult{
+		identifiers:     map[string]int{},
+		usageCounts:   map[string]int{},
+		functionLines: map[string]int{},
+		variableLines: map[string]int{},
+	}
+
+	result.imports = c.extractImports(content)
+	result.importSpecs = c.parseImportSpecs(content)
+	for i := range result.importSpecs {
+		if result.importSpecs[i].SideEffect {
+			continue
+		}
+		resolved := c.resolver.Resolve(result.importSpecs[i].Source, entry.Rel)
+		result.importSpecs[i].Resolved = resolved.Resolved
+		result.importSpecs[i].Confidence = resolved.Confidence
+	}
+
+	result.importsResolved = resolveLocalImports(entry.Rel, result.importSpecs, fileIndex)
+	result.exports = extractExports(content)
+
+	contentBytes := []byte(content)
+	if ast, err := collectASTData(ctx, entry.Rel, contentBytes, c.cfg.FeatureFlags.Patterns); err == nil {
+		result.identifiers = ast.Identifiers
+		result.usageCounts = ast.UsageCounts
+		result.functionDecls = ast.FunctionDecls
+		result.variableDecls = ast.VariableDecls
+		result.functionLines = ast.FunctionLines
+		result.variableLines = ast.VariableLines
+		result.importSpecs = mergeImportSpecs(result.importSpecs, ast.ImportSpecs)
+		result.exports = mergeExportNames(result.exports, ast.ExportSymbols)
+		result.exports = uniqueStrings(result.exports)
+		result.importsResolved = resolveLocalImports(entry.Rel, result.importSpecs, fileIndex)
+		result.exportSymbols = ast.ExportSymbols
+		result.featureFlagHits = ast.FlagHits
+	} else {
+		result.functionDecls = extractFunctionDecls(content)
+		result.variableDecls = extractVariableDecls(content)
+	}
+
+	result.dynamicIndicators = detectDynamic(content, c.cfg)
+	for _, re := range flagRegexes {
+		for _, match := range re.FindAllString(content, -1) {
+			if !flagHitExists(result.featureFlagHits, match) {
+				result.featureFlagHits = append(result.featureFlagHits, FlagOccurrence{
+					Flag: match,
+					Line: 0,
+				})
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (c *Collector) mergeOneFileResult(result *fileResult, fileRel string) {
+	c.imports[fileRel] = result.imports
+	c.importSpecs[fileRel] = result.importSpecs
+	c.importsResolved[fileRel] = result.importsResolved
+	c.exports[fileRel] = result.exports
+	c.identifiers[fileRel] = result.identifiers
+	c.usageCounts[fileRel] = result.usageCounts
+	c.functionDecls[fileRel] = result.functionDecls
+	c.variableDecls[fileRel] = result.variableDecls
+	c.functionLines[fileRel] = result.functionLines
+	c.variableLines[fileRel] = result.variableLines
+	c.featureFlagHits[fileRel] = result.featureFlagHits
+	c.dynamicIndicators[fileRel] = result.dynamicIndicators
+	if len(result.exportSymbols) > 0 {
+		c.exportSymbols[fileRel] = result.exportSymbols
+	}
+}
+
 func (c *Collector) Collect(ctx context.Context, entries []scan.FileEntry) (*Collected, error) {
 	if c == nil || c.cfg == nil {
 		return nil, errors.New("collector config is required")
@@ -100,59 +199,11 @@ func (c *Collector) Collect(ctx context.Context, entries []scan.FileEntry) (*Col
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		content, err := readFile(entry.Path)
+		result, err := c.collectOneFile(ctx, entry, fileIndex, flagRegexes)
 		if err != nil {
-			return nil, fmt.Errorf("reading file %q: %w", entry.Path, err)
+			return nil, err
 		}
-		contentBytes := []byte(content)
-
-		rawImports := c.extractImports(content)
-		importSpecs := c.parseImportSpecs(content)
-		for i := range importSpecs {
-			if importSpecs[i].SideEffect {
-				continue
-			}
-			resolved := c.resolver.Resolve(importSpecs[i].Source, entry.Rel)
-			importSpecs[i].Resolved = resolved.Resolved
-			importSpecs[i].Confidence = resolved.Confidence
-		}
-		c.imports[entry.Rel] = rawImports
-		c.importSpecs[entry.Rel] = importSpecs
-		c.importsResolved[entry.Rel] = resolveLocalImports(entry.Rel, importSpecs, fileIndex)
-		c.exports[entry.Rel] = extractExports(content)
-		c.identifiers[entry.Rel] = countIdentifiers(content)
-		c.usageCounts[entry.Rel] = map[string]int{}
-		c.functionDecls[entry.Rel] = extractFunctionDecls(content)
-		c.variableDecls[entry.Rel] = extractVariableDecls(content)
-		c.functionLines[entry.Rel] = map[string]int{}
-		c.variableLines[entry.Rel] = map[string]int{}
-		if ast, err := collectASTData(ctx, entry.Rel, contentBytes, c.cfg.FeatureFlags.Patterns); err == nil {
-			c.identifiers[entry.Rel] = ast.Identifiers
-			c.usageCounts[entry.Rel] = ast.UsageCounts
-			c.functionDecls[entry.Rel] = ast.FunctionDecls
-			c.variableDecls[entry.Rel] = ast.VariableDecls
-			c.functionLines[entry.Rel] = ast.FunctionLines
-			c.variableLines[entry.Rel] = ast.VariableLines
-			c.importSpecs[entry.Rel] = mergeImportSpecs(importSpecs, ast.ImportSpecs)
-			c.exports[entry.Rel] = mergeExportNames(c.exports[entry.Rel], ast.ExportSymbols)
-			c.exports[entry.Rel] = uniqueStrings(c.exports[entry.Rel])
-			c.importsResolved[entry.Rel] = resolveLocalImports(entry.Rel, c.importSpecs[entry.Rel], fileIndex)
-			c.exportSymbols[entry.Rel] = ast.ExportSymbols
-			c.featureFlagHits[entry.Rel] = mergeFlagHits(c.featureFlagHits[entry.Rel], ast.FlagHits)
-		}
-		c.dynamicIndicators[entry.Rel] = detectDynamic(content, c.cfg)
-
-		for _, re := range flagRegexes {
-			for _, match := range re.FindAllString(content, -1) {
-				c.featureFlagRefs[match]++
-				if !flagHitExists(c.featureFlagHits[entry.Rel], match) {
-					c.featureFlagHits[entry.Rel] = append(c.featureFlagHits[entry.Rel], FlagOccurrence{
-						Flag: match,
-						Line: 0,
-					})
-				}
-			}
-		}
+		c.mergeOneFileResult(result, entry.Rel)
 	}
 
 	return &Collected{
