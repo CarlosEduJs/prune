@@ -289,15 +289,6 @@ func extractVariableDecls(content string) []string {
 	return results
 }
 
-func countIdentifiers(content string) map[string]int {
-	counts := map[string]int{}
-	reIdent := regexp.MustCompile(`\b[A-Za-z_][A-Za-z0-9_]*\b`)
-	for _, match := range reIdent.FindAllString(content, -1) {
-		counts[match]++
-	}
-	return counts
-}
-
 func detectDynamic(content string, cfg *config.Config) []string {
 	indicators := []string{}
 	patterns := []string{"eval", "Function", "require", "import("}
