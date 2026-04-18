@@ -113,5 +113,6 @@ func defaultConfig() *Config {
 	cfg.Report.MinConfidence = "safe"
 	cfg.Report.IncludeEvidence = true
 	cfg.TsConfig.Enabled = false
+	cfg.Scan.Stream.BatchSize = 50
 	return cfg
 }

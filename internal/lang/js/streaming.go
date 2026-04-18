@@ -46,7 +46,11 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 
 			batch = append(batch, entry)
 
-			if len(batch) >= 50 || time.Since(lastEmit) >= interval {
+			batchSize := 50
+			if stream.BatchSize > 0 {
+				batchSize = stream.BatchSize
+			}
+			if len(batch) >= batchSize || time.Since(lastEmit) >= interval {
 				entriesCh <- batch
 				batch = []scan.FileEntry{}
 				lastEmit = time.Now()

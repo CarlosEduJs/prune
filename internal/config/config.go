@@ -39,6 +39,7 @@ type Config struct {
 type StreamConfig struct {
 	Enabled    bool `yaml:"enabled"`
 	IntervalMs int  `yaml:"interval_ms"`
+	BatchSize  int `yaml:"batch_size"`
 }
 
 type TsConfig struct {
