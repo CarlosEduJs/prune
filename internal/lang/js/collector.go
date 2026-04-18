@@ -267,7 +267,6 @@ var defaultSafePatterns = []string{
 	"Object", "Array", "process", "Buffer",
 	"setTimeout", "setInterval", "console",
 }
-var defaultSuspiciousPatterns = []string{"eval", "Function", "require", "import("}
 
 type DynamicIndicator struct {
 	Pattern    string
@@ -352,23 +351,6 @@ func hasHighRiskDynamic(indicators []string, cfg *config.Config, ruleKey string)
 	}
 
 	return false
-}
-
-func getSuspiciousDynamicPatterns(cfg *config.Config) []string {
-	if cfg == nil || cfg.Rules == nil {
-		return defaultSuspiciousPatterns
-	}
-
-	rule, ok := cfg.Rules["suspicious_dynamic_usage"]
-	if !ok {
-		return defaultSuspiciousPatterns
-	}
-
-	if len(rule.Patterns) > 0 {
-		return rule.Patterns
-	}
-
-	return defaultSuspiciousPatterns
 }
 
 func compileRegexes(patterns []string) []*regexp.Regexp {
