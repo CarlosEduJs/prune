@@ -81,6 +81,15 @@ type Collected struct {
 	DynamicIndicators map[string][]string
 }
 
+func (c *Collected) ReleaseUnused() {
+	c.FeatureFlagRefs = nil
+	c.FeatureFlagHits = nil
+}
+
+func (c *Collected) Reset() {
+	*c = Collected{}
+}
+
 type fileResult struct {
 	imports         []string
 	importSpecs     []ImportSpec

@@ -26,5 +26,8 @@ func Analyze(ctx context.Context, cfg *config.Config) ([]rules.Finding, error) {
 	}
 
 	findings := applyRules(cfg, collected)
+
+	collected.ReleaseUnused()
+
 	return findings, nil
 }
