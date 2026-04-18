@@ -246,3 +246,27 @@ func TestCollectedReset(t *testing.T) {
 		t.Error("expected Exports to be nil after Reset")
 	}
 }
+
+func TestSymbolTable(t *testing.T) {
+	st := NewSymbolTable()
+
+	st.Inc("foo")
+	if st["foo"] == nil || st["foo"].Count != 1 {
+		t.Error("expected foo with count 1")
+	}
+
+	st.MarkUsed("foo")
+	if !st["foo"].IsUsed {
+		t.Error("expected foo to be marked as used")
+	}
+
+	st.MarkExported("bar")
+	if !st["bar"].IsExported {
+		t.Error("expected bar to be marked as exported")
+	}
+
+	st.Free()
+	if len(st) != 0 {
+		t.Error("expected table to be empty after Free")
+	}
+}
