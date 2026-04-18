@@ -342,6 +342,7 @@ func getSafePatterns(cfg *config.Config, ruleKey string) []string {
 
 func hasHighRiskDynamic(indicators []string, cfg *config.Config, ruleKey string) bool {
 	highRisk := getHighRiskPatterns(cfg, ruleKey)
+
 	for _, ind := range indicators {
 		for _, risk := range highRisk {
 			if strings.Contains(ind, risk) {
@@ -349,7 +350,36 @@ func hasHighRiskDynamic(indicators []string, cfg *config.Config, ruleKey string)
 			}
 		}
 	}
+
+	suspiciousPatterns := getSuspiciousDynamicPatterns(cfg)
+	for _, ind := range indicators {
+		for _, pattern := range suspiciousPatterns {
+			if strings.Contains(ind, pattern) {
+				return true
+			}
+		}
+	}
+
 	return false
+}
+
+func getSuspiciousDynamicPatterns(cfg *config.Config) []string {
+	defaults := []string{"eval", "Function", "require", "import("}
+
+	if cfg == nil || cfg.Rules == nil {
+		return defaults
+	}
+
+	rule, ok := cfg.Rules["suspicious_dynamic_usage"]
+	if !ok {
+		return defaults
+	}
+
+	if len(rule.Patterns) > 0 {
+		return rule.Patterns
+	}
+
+	return defaults
 }
 
 func compileRegexes(patterns []string) []*regexp.Regexp {
