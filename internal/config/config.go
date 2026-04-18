@@ -73,5 +73,14 @@ func Load(path string) (*Config, error) {
 		return nil, errors.New("invalid config: version is required")
 	}
 
+	if cfg.Scan.Stream.Enabled {
+		if cfg.Scan.Stream.IntervalMs <= 0 {
+			return nil, errors.New("invalid config: stream.interval_ms must be positive")
+		}
+		if cfg.Scan.Stream.BatchSize <= 0 {
+			return nil, errors.New("invalid config: stream.batch_size must be positive")
+		}
+	}
+
 	return &cfg, nil
 }

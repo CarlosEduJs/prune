@@ -103,6 +103,7 @@ type fileResult struct {
 	functionLines map[string]int
 	variableLines map[string]int
 	featureFlagHits []FlagOccurrence
+	featureFlagRefs map[string]int
 	dynamicIndicators []string
 }
 
@@ -160,6 +161,7 @@ func (c *Collector) collectOneFile(ctx context.Context, entry scan.FileEntry, fi
 		usageCounts:   map[string]int{},
 		functionLines: map[string]int{},
 		variableLines: map[string]int{},
+		featureFlagRefs: map[string]int{},
 	}
 
 	result.imports = c.extractImports(content)
@@ -193,11 +195,22 @@ func (c *Collector) collectOneFile(ctx context.Context, entry scan.FileEntry, fi
 	} else {
 		result.functionDecls = extractFunctionDecls(content)
 		result.variableDecls = extractVariableDecls(content)
+		result.usageCounts = map[string]int{}
+
+		for _, fn := range result.functionDecls {
+			result.functionLines[fn] = findLineNumber(content, "function "+fn)
+		}
+		for _, vr := range result.variableDecls {
+			result.variableLines[vr] = findLineNumber(content, vr)
+		}
 	}
 
 	result.dynamicIndicators = detectDynamic(content, c.cfg)
+
+	featureRefs := map[string]int{}
 	for _, re := range flagRegexes {
 		for _, match := range re.FindAllString(content, -1) {
+			featureRefs[match]++
 			if !flagHitExists(result.featureFlagHits, match) {
 				result.featureFlagHits = append(result.featureFlagHits, FlagOccurrence{
 					Flag: match,
@@ -206,6 +219,7 @@ func (c *Collector) collectOneFile(ctx context.Context, entry scan.FileEntry, fi
 			}
 		}
 	}
+	result.featureFlagRefs = featureRefs
 
 	return result, nil
 }
@@ -223,6 +237,11 @@ func (c *Collector) mergeOneFileResult(result *fileResult, fileRel string) {
 	c.variableLines[fileRel] = result.variableLines
 	c.featureFlagHits[fileRel] = result.featureFlagHits
 	c.dynamicIndicators[fileRel] = result.dynamicIndicators
+	if result.featureFlagRefs != nil {
+		for flag, count := range result.featureFlagRefs {
+			c.featureFlagRefs[flag] += count
+		}
+	}
 	if len(result.exportSymbols) > 0 {
 		c.exportSymbols[fileRel] = result.exportSymbols
 	}
@@ -335,6 +354,16 @@ func extractVariableDecls(content string) []string {
 		}
 	}
 	return results
+}
+
+func findLineNumber(content string, pattern string) int {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, pattern) {
+			return i + 1
+		}
+	}
+	return 1
 }
 
 func detectDynamic(content string, cfg *config.Config) []string {

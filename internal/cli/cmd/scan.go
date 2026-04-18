@@ -78,10 +78,16 @@ func runScan(ctx context.Context, args []string) error {
 	if opts.streamSet {
 		cfg.Scan.Stream.Enabled = opts.stream
 	}
-	if opts.streamIntervalSet && opts.streamInterval > 0 {
+	if opts.streamIntervalSet {
+		if opts.streamInterval <= 0 {
+			return fmt.Errorf("stream-interval must be positive, got %d", opts.streamInterval)
+		}
 		cfg.Scan.Stream.IntervalMs = opts.streamInterval
 	}
-	if opts.streamBatchSet && opts.streamBatchSize > 0 {
+	if opts.streamBatchSet {
+		if opts.streamBatchSize <= 0 {
+			return fmt.Errorf("stream-batch-size must be positive, got %d", opts.streamBatchSize)
+		}
 		cfg.Scan.Stream.BatchSize = opts.streamBatchSize
 	}
 
