@@ -261,6 +261,14 @@ func detectDynamic(content string, cfg *config.Config) []string {
 	return indicators
 }
 
+var defaultHighRiskPatterns = []string{"eval", "Function", "import("}
+var defaultSafePatterns = []string{
+	"window", "document", "Math", "JSON",
+	"Object", "Array", "process", "Buffer",
+	"setTimeout", "setInterval", "console",
+}
+var defaultSuspiciousPatterns = []string{"eval", "Function", "require", "import("}
+
 type DynamicIndicator struct {
 	Pattern    string
 	IsHighRisk bool
@@ -299,45 +307,37 @@ func classifyDynamicIndicators(indicators []string, cfg *config.Config, ruleKey 
 }
 
 func getHighRiskPatterns(cfg *config.Config, ruleKey string) []string {
-	defaults := []string{"eval", "Function", "import("}
-
 	if cfg == nil || cfg.Rules == nil {
-		return defaults
+		return defaultHighRiskPatterns
 	}
 
 	rule, ok := cfg.Rules[ruleKey]
 	if !ok {
-		return defaults
+		return defaultHighRiskPatterns
 	}
 
 	if len(rule.HighRiskPatterns) > 0 {
 		return rule.HighRiskPatterns
 	}
 
-	return defaults
+	return defaultHighRiskPatterns
 }
 
 func getSafePatterns(cfg *config.Config, ruleKey string) []string {
-	defaults := []string{
-		"window", "document", "Math", "JSON",
-		"Object", "Array", "process", "Buffer",
-		"setTimeout", "setInterval", "console",
-	}
-
 	if cfg == nil || cfg.Rules == nil {
-		return defaults
+		return defaultSafePatterns
 	}
 
 	rule, ok := cfg.Rules[ruleKey]
 	if !ok {
-		return defaults
+		return defaultSafePatterns
 	}
 
 	if len(rule.SafePatterns) > 0 {
 		return rule.SafePatterns
 	}
 
-	return defaults
+	return defaultSafePatterns
 }
 
 func hasHighRiskDynamic(indicators []string, cfg *config.Config, ruleKey string) bool {
@@ -351,35 +351,24 @@ func hasHighRiskDynamic(indicators []string, cfg *config.Config, ruleKey string)
 		}
 	}
 
-	suspiciousPatterns := getSuspiciousDynamicPatterns(cfg)
-	for _, ind := range indicators {
-		for _, pattern := range suspiciousPatterns {
-			if strings.Contains(ind, pattern) {
-				return true
-			}
-		}
-	}
-
 	return false
 }
 
 func getSuspiciousDynamicPatterns(cfg *config.Config) []string {
-	defaults := []string{"eval", "Function", "require", "import("}
-
 	if cfg == nil || cfg.Rules == nil {
-		return defaults
+		return defaultSuspiciousPatterns
 	}
 
 	rule, ok := cfg.Rules["suspicious_dynamic_usage"]
 	if !ok {
-		return defaults
+		return defaultSuspiciousPatterns
 	}
 
 	if len(rule.Patterns) > 0 {
 		return rule.Patterns
 	}
 
-	return defaults
+	return defaultSuspiciousPatterns
 }
 
 func compileRegexes(patterns []string) []*regexp.Regexp {
