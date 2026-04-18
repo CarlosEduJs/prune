@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"prune/internal/config"
+	"prune/internal/scan"
 )
 
 func TestUniqueStrings(t *testing.T) {
@@ -210,4 +211,38 @@ func TestClassifyDynamicIndicators(t *testing.T) {
 			t.Fatal("expected fourth to be medium-risk")
 		}
 	})
+}
+
+func TestCollectedReleaseUnused(t *testing.T) {
+	c := &Collected{
+		FeatureFlagRefs: map[string]int{"TODO": 5},
+		FeatureFlagHits: map[string][]FlagOccurrence{
+			"main.ts": {{Flag: "TODO", Line: 10}},
+		},
+	}
+
+	c.ReleaseUnused()
+
+	if c.FeatureFlagRefs != nil {
+		t.Error("expected FeatureFlagRefs to be nil")
+	}
+	if c.FeatureFlagHits != nil {
+		t.Error("expected FeatureFlagHits to be nil")
+	}
+}
+
+func TestCollectedReset(t *testing.T) {
+	c := &Collected{
+		Files: []scan.FileEntry{{Rel: "a.ts"}},
+		Exports: map[string][]string{"a.ts": {"foo"}},
+	}
+
+	c.Reset()
+
+	if c.Files != nil {
+		t.Error("expected Files to be nil after Reset")
+	}
+	if c.Exports != nil {
+		t.Error("expected Exports to be nil after Reset")
+	}
 }
