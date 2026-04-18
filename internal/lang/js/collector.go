@@ -91,19 +91,58 @@ func (c *Collected) Reset() {
 }
 
 type fileResult struct {
-	imports         []string
-	importSpecs     []ImportSpec
-	importsResolved []string
-	exports         []string
-	exportSymbols   []ExportSymbol
-	identifiers     map[string]int
-	usageCounts   map[string]int
-	functionDecls []string
-	variableDecls []string
+	imports           []string
+	importSpecs       []ImportSpec
+	importsResolved   []string
+	exports           []string
+	exportSymbols     []ExportSymbol
+	identifiers       map[string]int
+	usageCounts     map[string]int
+	functionDecls   []string
+	variableDecls   []string
 	functionLines map[string]int
 	variableLines map[string]int
 	featureFlagHits []FlagOccurrence
 	dynamicIndicators []string
+}
+
+type SymbolInfo struct {
+	Count     int
+	IsUsed    bool
+	IsExported bool
+}
+
+type SymbolTable map[string]*SymbolInfo
+
+func NewSymbolTable() SymbolTable {
+	return make(SymbolTable)
+}
+
+func (st SymbolTable) Inc(name string) {
+	if st[name] == nil {
+		st[name] = &SymbolInfo{}
+	}
+	st[name].Count++
+}
+
+func (st SymbolTable) MarkUsed(name string) {
+	if st[name] == nil {
+		st[name] = &SymbolInfo{}
+	}
+	st[name].IsUsed = true
+}
+
+func (st SymbolTable) MarkExported(name string) {
+	if st[name] == nil {
+		st[name] = &SymbolInfo{}
+	}
+	st[name].IsExported = true
+}
+
+func (st SymbolTable) Free() {
+	for k := range st {
+		delete(st, k)
+	}
 }
 
 func (c *Collector) collectOneFile(ctx context.Context, entry scan.FileEntry, fileIndex map[string]scan.FileEntry, flagRegexes []*regexp.Regexp) (*fileResult, error) {
