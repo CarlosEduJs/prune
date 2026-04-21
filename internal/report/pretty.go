@@ -160,7 +160,7 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 				displayFile = "(no file)"
 			}
 			if useColor {
-				fmt.Fprintf(&b, "  %s%s%s\n", colorCyan, displayFile, colorReset)
+				fmt.Fprintf(&b, "  %s%s%s%s\n", colorCyan, colorBold, displayFile, colorReset)
 			} else {
 				fmt.Fprintf(&b, "  %s\n", displayFile)
 			}
@@ -176,10 +176,29 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 					detail = fmt.Sprintf("%s: %s", kindLabel, finding.Symbol)
 				}
 
+				lineStr := ""
+				if finding.Line > 0 {
+					lineStr = fmt.Sprintf("line %d", finding.Line)
+				}
+
 				if useColor {
-					fmt.Fprintf(&b, "  %s└─%s %s\n", colorDim, colorReset, detail)
+					if lineStr != "" {
+						fmt.Fprintf(&b, "  %s└─%s %s %s[%s]%s\n", colorDim, colorReset, detail, colorDim, lineStr, colorReset)
+					} else {
+						fmt.Fprintf(&b, "  %s└─%s %s\n", colorDim, colorReset, detail)
+					}
+					if finding.Reason != "" {
+						fmt.Fprintf(&b, "     %s│ %s%s\n", colorDim, finding.Reason, colorReset)
+					}
 				} else {
-					fmt.Fprintf(&b, "  └─ %s\n", detail)
+					if lineStr != "" {
+						fmt.Fprintf(&b, "  └─ %s [%s]\n", detail, lineStr)
+					} else {
+						fmt.Fprintf(&b, "  └─ %s\n", detail)
+					}
+					if finding.Reason != "" {
+						fmt.Fprintf(&b, "     │ %s\n", finding.Reason)
+					}
 				}
 			}
 			b.WriteString("\n")
@@ -220,12 +239,13 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 	separator := "─────────────────────────────────\n"
 	if useColor {
 		b.WriteString(colorDim + separator + colorReset)
+		b.WriteString(colorBold + "Summary\n" + colorReset)
+		b.WriteString(colorDim + separator + colorReset)
 	} else {
 		b.WriteString(separator)
+		b.WriteString("Summary\n")
+		b.WriteString(separator)
 	}
-
-	b.WriteString("Summary\n")
-	b.WriteString("\n")
 
 	typeOrder := []struct {
 		key   string
@@ -263,7 +283,12 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "  Total        %d\n", len(findings))
-	b.WriteString("\n")
+	
+	if useColor {
+		b.WriteString(colorDim + separator + colorReset)
+	} else {
+		b.WriteString(separator)
+	}
 
 	dur := f.opts.Duration.Round(time.Millisecond)
 	if useColor {
