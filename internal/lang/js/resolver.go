@@ -74,20 +74,16 @@ func (r *Resolver) Classify(source string) ImportType {
 		return ImportTypeRelative
 	}
 
-	if len(r.aliasPaths) > 0 {
-		for alias := range r.aliasPaths {
-			if strings.HasPrefix(source, strings.TrimSuffix(alias, "/*")) {
-				return ImportTypeAlias
-			}
-		}
+	if strings.HasPrefix(source, "@/") {
+		return ImportTypeAlias
+	}
+
+	if r.findBestAlias(source) != "" {
+		return ImportTypeAlias
 	}
 
 	if r.isExternal(source) {
 		return ImportTypeExternal
-	}
-
-	if strings.HasPrefix(source, "@/") {
-		return ImportTypeAlias
 	}
 
 	return ImportTypeRelative
@@ -124,41 +120,44 @@ func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
 		}
 	}
 
-	for alias, targets := range r.aliasPaths {
-		prefix := strings.TrimSuffix(alias, "/*")
-		if !strings.HasPrefix(source, prefix) {
-			continue
-		}
-
-		if len(targets) == 0 {
-			continue
-		}
-
-		mapping := targets[0]
-		suffix := strings.TrimPrefix(source, prefix)
-		suffix = strings.TrimPrefix(suffix, "/")
-
-		mappingBase := strings.TrimSuffix(mapping, "/*")
-		baseURL := r.baseURL
-		if baseURL == "." {
-			baseURL = ""
-		}
-		resolvedPath := filepath.ToSlash(filepath.Clean(filepath.Join(baseURL, mappingBase, suffix)))
-
-		if target, ok := r.resolveFile(resolvedPath); ok {
-			return ResolvedImport{
-				Type:       ImportTypeAlias,
-				Original:   source,
-				Resolved:   target,
-				Confidence: "safe",
-			}
-		}
-
+	bestAlias := r.findBestAlias(source)
+	if bestAlias == "" {
 		return ResolvedImport{
 			Type:       ImportTypeAlias,
 			Original:   source,
 			Resolved:   "",
 			Confidence: "review",
+		}
+	}
+
+	targets := r.aliasPaths[bestAlias]
+	if len(targets) == 0 {
+		return ResolvedImport{
+			Type:       ImportTypeAlias,
+			Original:   source,
+			Resolved:   "",
+			Confidence: "review",
+		}
+	}
+
+	prefix := strings.TrimSuffix(bestAlias, "/*")
+	mapping := targets[0]
+	suffix := strings.TrimPrefix(source, prefix)
+	suffix = strings.TrimPrefix(suffix, "/")
+
+	mappingBase := strings.TrimSuffix(mapping, "/*")
+	baseURL := r.baseURL
+	if baseURL == "." {
+		baseURL = ""
+	}
+	resolvedPath := filepath.ToSlash(filepath.Clean(filepath.Join(baseURL, mappingBase, suffix)))
+
+	if target, ok := r.resolveFile(resolvedPath); ok {
+		return ResolvedImport{
+			Type:       ImportTypeAlias,
+			Original:   source,
+			Resolved:   target,
+			Confidence: "safe",
 		}
 	}
 
@@ -189,6 +188,24 @@ func (r *Resolver) resolveFile(path string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// findBestAlias returns the alias key with the longest matching prefix for the
+// given import source. This implements TypeScript's "longest prefix match" rule
+// for path mappings (e.g. @scope/core/* wins over @scope/* for "@scope/core/util").
+func (r *Resolver) findBestAlias(source string) string {
+	bestAlias := ""
+	bestLen := 0
+	for alias := range r.aliasPaths {
+		prefix := strings.TrimSuffix(alias, "/*")
+		if strings.HasPrefix(source, prefix) && (len(source) == len(prefix) || source[len(prefix)] == '/') {
+			if len(prefix) > bestLen {
+				bestAlias = alias
+				bestLen = len(prefix)
+			}
+		}
+	}
+	return bestAlias
 }
 
 func (r *Resolver) isExternal(source string) bool {

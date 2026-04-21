@@ -610,6 +610,10 @@ func resolveLocalImports(from string, specs []ImportSpec, index map[string]scan.
 	resolved := []string{}
 	base := filepath.Dir(from)
 	for _, spec := range specs {
+		if spec.Resolved != "" {
+			resolved = append(resolved, spec.Resolved)
+			continue
+		}
 		if !strings.HasPrefix(spec.Source, ".") {
 			continue
 		}
