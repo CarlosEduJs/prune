@@ -198,7 +198,7 @@ func (r *Resolver) findBestAlias(source string) string {
 	bestLen := 0
 	for alias := range r.aliasPaths {
 		prefix := strings.TrimSuffix(alias, "/*")
-		if strings.HasPrefix(source, prefix) && (len(source) == len(prefix) || source[len(prefix)] == '/') {
+		if strings.HasPrefix(source, prefix) && len(source) > len(prefix) && source[len(prefix)] == '/' {
 			if len(prefix) > bestLen {
 				bestAlias = alias
 				bestLen = len(prefix)

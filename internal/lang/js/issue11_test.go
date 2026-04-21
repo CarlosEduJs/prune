@@ -166,6 +166,11 @@ func TestIssue11PrefixBoundary(t *testing.T) {
 			wantType: ImportTypeAlias,
 		},
 		{
+			name:     "bare @scope is NOT an alias — external",
+			source:   "@scope",
+			wantType: ImportTypeExternal,
+		},
+		{
 			name:     "@scope-core/util is NOT an alias — external",
 			source:   "@scope-core/util",
 			wantType: ImportTypeExternal,
@@ -264,5 +269,46 @@ func TestIssue11ResolverCollectorIntegration(t *testing.T) {
 		if f.Kind == "unused_file" && f.File == "libs/helper.ts" {
 			t.Errorf("libs/helper.ts was flagged as unused_file, but it is imported via alias @lib/helper")
 		}
+	}
+}
+
+func TestFindDeclLineNumber(t *testing.T) {
+	// The identifier "count" appears first in a comment (line 1) and
+	// as a usage (line 2), but the declaration is on line 3.
+	// findDeclLineNumber must return line 3, not line 1.
+	content := `// count is used for tracking
+console.log(count)
+const count = 42
+let other = count + 1`
+
+	tests := []struct {
+		name     string
+		varName  string
+		wantLine int
+	}{
+		{
+			name:     "finds const declaration, not comment or usage",
+			varName:  "count",
+			wantLine: 3,
+		},
+		{
+			name:     "finds let declaration",
+			varName:  "other",
+			wantLine: 4,
+		},
+		{
+			name:     "falls back to first occurrence when no declaration keyword",
+			varName:  "console",
+			wantLine: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := findDeclLineNumber(content, tt.varName)
+			if got != tt.wantLine {
+				t.Errorf("findDeclLineNumber(%q) = %d, want %d", tt.varName, got, tt.wantLine)
+			}
+		})
 	}
 }
