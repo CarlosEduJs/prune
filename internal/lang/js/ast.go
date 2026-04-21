@@ -656,6 +656,9 @@ func trimQuotes(value string) string {
 }
 
 func collectFlagHits(root astNode, content []byte, result *astResult, flagPatterns []string) {
+	if len(flagPatterns) == 0 {
+		return
+	}
 	regexes := compileRegexes(flagPatterns)
 	walkAST(root, func(node astNode) {
 		if node.Type() == "member_expression" || node.Type() == "subscript_expression" {
