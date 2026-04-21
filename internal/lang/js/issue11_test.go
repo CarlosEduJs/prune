@@ -109,3 +109,160 @@ func TestIssue11AliasFilesTrackedAsUsed(t *testing.T) {
 		}
 	}
 }
+
+func TestIssue11Determinism(t *testing.T) {
+	fileIndex := map[string]scan.FileEntry{
+		"libs/util.ts":        {Path: "libs/util.ts", Rel: "libs/util.ts"},
+		"others/core/util.ts": {Path: "others/core/util.ts", Rel: "others/core/util.ts"},
+	}
+
+	for i := 0; i < 100; i++ {
+		cfg := &config.Config{
+			TsConfig: config.TsConfig{
+				Enabled: true,
+				BaseURL: ".",
+				Paths: map[string][]string{
+					"@scope/*":      {"others/*"},
+					"@scope/core/*": {"libs/*"},
+				},
+			},
+		}
+		r := NewResolver(cfg, fileIndex)
+		got := r.Resolve("@scope/core/util", "src/main.ts")
+
+		if got.Resolved != "libs/util.ts" {
+			t.Fatalf("iteration %d: Resolved = %q, want %q (determinism broken)", i, got.Resolved, "libs/util.ts")
+		}
+		if got.Type != ImportTypeAlias {
+			t.Fatalf("iteration %d: Type = %v, want %v", i, got.Type, ImportTypeAlias)
+		}
+	}
+}
+
+func TestIssue11PrefixBoundary(t *testing.T) {
+	cfg := &config.Config{
+		TsConfig: config.TsConfig{
+			Enabled: true,
+			BaseURL: ".",
+			Paths: map[string][]string{
+				"@scope/*": {"src/*"},
+			},
+		},
+	}
+	fileIndex := map[string]scan.FileEntry{
+		"src/util.ts": {Path: "src/util.ts", Rel: "src/util.ts"},
+	}
+
+	r := NewResolver(cfg, fileIndex)
+
+	tests := []struct {
+		name     string
+		source   string
+		wantType ImportType
+	}{
+		{
+			name:     "@scope/util is an alias",
+			source:   "@scope/util",
+			wantType: ImportTypeAlias,
+		},
+		{
+			name:     "@scope-core/util is NOT an alias — external",
+			source:   "@scope-core/util",
+			wantType: ImportTypeExternal,
+		},
+		{
+			name:     "@scoped/util is NOT an alias — external",
+			source:   "@scoped/util",
+			wantType: ImportTypeExternal,
+		},
+		{
+			name:     "@scope-ui/components is NOT an alias — external",
+			source:   "@scope-ui/components",
+			wantType: ImportTypeExternal,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := r.Classify(tt.source)
+			if got != tt.wantType {
+				t.Errorf("Classify(%q) = %v, want %v", tt.source, got, tt.wantType)
+			}
+		})
+	}
+}
+
+func TestIssue11ResolverCollectorIntegration(t *testing.T) {
+	cfg := &config.Config{
+		Version: 1,
+		TsConfig: config.TsConfig{
+			Enabled: true,
+			BaseURL: ".",
+			Paths: map[string][]string{
+				"@lib/*": {"libs/*"},
+			},
+		},
+		Rules: map[string]config.RuleConfig{
+			"unused_file":   {Enabled: true},
+			"unused_export": {Enabled: false},
+			"unused_function": {Enabled: false},
+			"unused_variable": {Enabled: false},
+			"possible_dynamic_usage": {Enabled: false},
+			"suspicious_dynamic_usage": {Enabled: false},
+		},
+	}
+
+	entries := []scan.FileEntry{
+		{Path: "src/main.ts", Rel: "src/main.ts"},
+		{Path: "libs/helper.ts", Rel: "libs/helper.ts"},
+	}
+
+	fileIndex := map[string]scan.FileEntry{
+		"src/main.ts":    entries[0],
+		"libs/helper.ts": entries[1],
+	}
+
+	resolver := NewResolver(cfg, fileIndex)
+	importSource := "@lib/helper"
+	resolved := resolver.Resolve(importSource, "src/main.ts")
+
+	if resolved.Resolved != "libs/helper.ts" {
+		t.Fatalf("resolver: Resolved = %q, want %q", resolved.Resolved, "libs/helper.ts")
+	}
+
+	specs := []ImportSpec{
+		{
+			Source:     importSource,
+			Resolved:   resolved.Resolved,
+			Confidence: resolved.Confidence,
+			Names:      []string{"helper"},
+		},
+	}
+	importsResolved := resolveLocalImports("src/main.ts", specs, fileIndex)
+
+	collected := &Collected{
+		Files:           entries,
+		Imports:         map[string][]string{"src/main.ts": {importSource}},
+		ImportSpecs:     map[string][]ImportSpec{"src/main.ts": specs},
+		ImportsResolved: map[string][]string{"src/main.ts": importsResolved},
+		Exports:         map[string][]string{},
+		ExportSymbols:   map[string][]ExportSymbol{},
+		Identifiers:     map[string]map[string]int{},
+		UsageCounts:     map[string]map[string]int{},
+		FunctionDecls:   map[string][]string{},
+		VariableDecls:   map[string][]string{},
+		FunctionLines:   map[string]map[string]int{},
+		VariableLines:   map[string]map[string]int{},
+		FeatureFlagRefs: map[string]int{},
+		FeatureFlagHits: map[string][]FlagOccurrence{},
+		DynamicIndicators: map[string][]string{},
+	}
+
+	findings := applyRules(cfg, collected)
+
+	for _, f := range findings {
+		if f.Kind == "unused_file" && f.File == "libs/helper.ts" {
+			t.Errorf("libs/helper.ts was flagged as unused_file, but it is imported via alias @lib/helper")
+		}
+	}
+}
