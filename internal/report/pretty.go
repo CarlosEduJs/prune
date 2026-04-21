@@ -73,7 +73,7 @@ func normalizeClassification(findings []rules.Finding) []rules.Finding {
 	return result
 }
 
-func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
+func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //nolint:gocyclo
 	useColor := supportsColor()
 	var b strings.Builder
 
@@ -151,8 +151,42 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 
 		for _, file := range files {
 			ff := fileGroups[file]
-			sort.Slice(ff, func(i, j int) bool {
-				return ff[i].Kind < ff[j].Kind
+			type groupedFinding struct {
+				Kind   string
+				Symbol string
+				Reason string
+				Lines  []int
+			}
+
+			var groups []groupedFinding
+			groupMap := map[string]int{}
+
+			for _, finding := range ff {
+				key := finding.Kind + "|" + finding.Symbol + "|" + finding.Reason
+				if idx, ok := groupMap[key]; ok {
+					if finding.Line > 0 {
+						groups[idx].Lines = append(groups[idx].Lines, finding.Line)
+					}
+				} else {
+					lines := []int{}
+					if finding.Line > 0 {
+						lines = append(lines, finding.Line)
+					}
+					groups = append(groups, groupedFinding{
+						Kind:   finding.Kind,
+						Symbol: finding.Symbol,
+						Reason: finding.Reason,
+						Lines:  lines,
+					})
+					groupMap[key] = len(groups) - 1
+				}
+			}
+
+			sort.Slice(groups, func(i, j int) bool {
+				if groups[i].Kind != groups[j].Kind {
+					return groups[i].Kind < groups[j].Kind
+				}
+				return groups[i].Symbol < groups[j].Symbol
 			})
 
 			displayFile := file
@@ -165,20 +199,36 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 				fmt.Fprintf(&b, "  %s\n", displayFile)
 			}
 
-			for _, finding := range ff {
-				kindLabel := kindLabels[finding.Kind]
+			for _, grp := range groups {
+				uniqueLines := []int{}
+				seenLines := map[int]bool{}
+				for _, l := range grp.Lines {
+					if !seenLines[l] {
+						seenLines[l] = true
+						uniqueLines = append(uniqueLines, l)
+					}
+				}
+				sort.Ints(uniqueLines)
+
+				lineStr := ""
+				if len(uniqueLines) == 1 {
+					lineStr = fmt.Sprintf("line %d", uniqueLines[0])
+				} else if len(uniqueLines) > 1 {
+					var strLines []string
+					for _, l := range uniqueLines {
+						strLines = append(strLines, fmt.Sprint(l))
+					}
+					lineStr = fmt.Sprintf("lines %s", strings.Join(strLines, ", "))
+				}
+
+				kindLabel := kindLabels[grp.Kind]
 				if kindLabel == "" {
-					kindLabel = finding.Kind
+					kindLabel = grp.Kind
 				}
 
 				detail := kindLabel
-				if finding.Symbol != "" {
-					detail = fmt.Sprintf("%s: %s", kindLabel, finding.Symbol)
-				}
-
-				lineStr := ""
-				if finding.Line > 0 {
-					lineStr = fmt.Sprintf("line %d", finding.Line)
+				if grp.Symbol != "" {
+					detail = fmt.Sprintf("%s: %s", kindLabel, grp.Symbol)
 				}
 
 				if useColor {
@@ -187,8 +237,8 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 					} else {
 						fmt.Fprintf(&b, "  %s└─%s %s\n", colorDim, colorReset, detail)
 					}
-					if finding.Reason != "" {
-						fmt.Fprintf(&b, "     %s│ %s%s\n", colorDim, finding.Reason, colorReset)
+					if grp.Reason != "" {
+						fmt.Fprintf(&b, "     %s│ %s%s\n", colorDim, grp.Reason, colorReset)
 					}
 				} else {
 					if lineStr != "" {
@@ -196,8 +246,8 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) {
 					} else {
 						fmt.Fprintf(&b, "  └─ %s\n", detail)
 					}
-					if finding.Reason != "" {
-						fmt.Fprintf(&b, "     │ %s\n", finding.Reason)
+					if grp.Reason != "" {
+						fmt.Fprintf(&b, "     │ %s\n", grp.Reason)
 					}
 				}
 			}
