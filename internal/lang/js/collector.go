@@ -201,7 +201,7 @@ func (c *Collector) collectOneFile(ctx context.Context, entry scan.FileEntry, fi
 			result.functionLines[fn] = findLineNumber(content, "function "+fn)
 		}
 		for _, vr := range result.variableDecls {
-			result.variableLines[vr] = findLineNumber(content, vr)
+			result.variableLines[vr] = findDeclLineNumber(content, vr)
 		}
 	}
 
@@ -364,6 +364,22 @@ func findLineNumber(content string, pattern string) int {
 		}
 	}
 	return 1
+}
+
+// findDeclLineNumber finds the line where a variable is declared (const/let/var),
+// not just the first occurrence of the identifier. Falls back to findLineNumber
+// if no declaration keyword is found.
+func findDeclLineNumber(content string, name string) int {
+	prefixes := []string{"const " + name, "let " + name, "var " + name}
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		for _, prefix := range prefixes {
+			if strings.Contains(line, prefix) {
+				return i + 1
+			}
+		}
+	}
+	return findLineNumber(content, name)
 }
 
 func detectDynamic(content string, cfg *config.Config) []string {
