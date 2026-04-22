@@ -50,28 +50,11 @@ var confidenceIcons = map[string]string{
 	"review":      "⚠",
 }
 
-var classificationRules = map[string]string{
-	"unused_file":              "safe",
-	"unused_export":            "safe",
-	"unused_function":          "likely_dead",
-	"possible_dynamic_usage":   "review",
-	"suspicious_dynamic_usage": "review",
-}
-
 type prettyFormatter struct {
 	opts FormatterOptions
 }
 
-func normalizeClassification(findings []rules.Finding) []rules.Finding {
-	result := make([]rules.Finding, len(findings))
-	copy(result, findings)
-	for i := range result {
-		if override, ok := classificationRules[result[i].Kind]; ok {
-			result[i].Confidence = override
-		}
-	}
-	return result
-}
+
 
 func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //nolint:gocyclo
 	useColor := supportsColor()
@@ -109,7 +92,6 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //no
 	}
 
 	findings = deduplicateUnusedFiles(findings)
-	findings = normalizeClassification(findings)
 
 	b.WriteString(f.header(len(findings), useColor))
 	b.WriteString("\n")
