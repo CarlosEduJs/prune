@@ -260,11 +260,17 @@ func collectExportSymbols(root astNode, content []byte, result *astResult) {
 			parsed := parseExportStatement(node, content)
 			result.ExportSymbols = append(result.ExportSymbols, parsed.Symbols...)
 			result.ImportSpecs = append(result.ImportSpecs, parsed.Reexports...)
+			for _, defName := range parsed.DefaultNames {
+				result.UsageCounts[defName]++
+			}
 		case "export_clause":
 			if parent := node.Parent(); parent != nil && parent.Type() == "export_statement" {
 				parsed := parseExportStatement(parent, content)
 				result.ExportSymbols = append(result.ExportSymbols, parsed.Symbols...)
 				result.ImportSpecs = append(result.ImportSpecs, parsed.Reexports...)
+				for _, defName := range parsed.DefaultNames {
+					result.UsageCounts[defName]++
+				}
 			}
 		case "export_default_declaration":
 			defaultLine := int(node.StartPoint().Row) + 1
@@ -277,12 +283,7 @@ func collectExportSymbols(root astNode, content []byte, result *astResult) {
 					nameNode := decl.ChildByFieldName("name")
 					if nameNode != nil {
 						name := nodeContent(nameNode, content)
-						if name != "" {
-							result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
-								Name: name,
-								Line: int(nameNode.StartPoint().Row) + 1,
-							})
-						}
+						result.UsageCounts[name]++
 					}
 				} else if decl.Type() == "function" || decl.Type() == "class" {
 					result.ExportSymbols = append(result.ExportSymbols, ExportSymbol{
@@ -441,8 +442,9 @@ func parseRequireStatement(node astNode, content []byte) *ImportSpec {
 }
 
 type exportParseResult struct {
-	Symbols   []ExportSymbol
-	Reexports []ImportSpec
+	Symbols      []ExportSymbol
+	Reexports    []ImportSpec
+	DefaultNames []string
 }
 
 func parseExportStatement(node astNode, content []byte) exportParseResult {
@@ -453,6 +455,18 @@ func parseExportStatement(node astNode, content []byte) exportParseResult {
 	results := []ExportSymbol{}
 	reexports := []ImportSpec{}
 
+	isDefault := false
+	for i := 0; i < node.ChildCount(); i++ {
+		if node.Child(i).Type() == "default" {
+			isDefault = true
+			break
+		}
+	}
+
+	if isDefault {
+		results = append(results, ExportSymbol{Name: "default", Line: line})
+	}
+
 	decl := node.ChildByFieldName("declaration")
 	if decl != nil {
 		switch decl.Type() {
@@ -461,12 +475,20 @@ func parseExportStatement(node astNode, content []byte) exportParseResult {
 			if nameNode != nil {
 				name := nodeContent(nameNode, content)
 				if name != "" {
+					if isDefault {
+						return exportParseResult{Symbols: results, DefaultNames: []string{name}}
+					}
 					results = append(results, ExportSymbol{Name: name, Line: line})
 				}
 			}
 		case "lexical_declaration", "variable_declaration":
 			for _, name := range parseVarDeclarationNames(decl, content) {
 				results = append(results, ExportSymbol{Name: name, Line: line})
+			}
+		case "identifier":
+			if isDefault {
+				name := nodeContent(decl, content)
+				return exportParseResult{Symbols: results, DefaultNames: []string{name}}
 			}
 		}
 		return exportParseResult{Symbols: results}
