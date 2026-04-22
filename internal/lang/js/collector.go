@@ -394,11 +394,13 @@ func detectDynamic(content string, cfg *config.Config) []string {
 		}
 	}
 
-	if highRisk := getHighRiskPatterns(cfg, "unused_function"); len(highRisk) > 0 {
-		for _, pattern := range highRisk {
-			if strings.Contains(content, pattern) && !contains(indicators, pattern) {
-				indicators = append(indicators, pattern)
-			}
+	highRiskPatterns := uniqueStrings(append(
+		append(getHighRiskPatterns(cfg, "unused_function"), getHighRiskPatterns(cfg, "unused_export")...),
+		getHighRiskPatterns(cfg, "unused_variable")...,
+	))
+	for _, pattern := range highRiskPatterns {
+		if strings.Contains(content, pattern) && !contains(indicators, pattern) {
+			indicators = append(indicators, pattern)
 		}
 	}
 

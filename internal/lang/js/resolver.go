@@ -111,6 +111,28 @@ func (r *Resolver) resolveRelative(source, fromFile string) ResolvedImport {
 }
 
 func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
+	if strings.HasPrefix(source, "@/") {
+		baseURL := r.baseURL
+		if baseURL == "." {
+			baseURL = ""
+		}
+		resolvedPath := filepath.ToSlash(filepath.Clean(filepath.Join(baseURL, strings.TrimPrefix(source, "@/"))))
+		if target, ok := r.resolveFile(resolvedPath); ok {
+			return ResolvedImport{
+				Type:       ImportTypeAlias,
+				Original:   source,
+				Resolved:   target,
+				Confidence: "safe",
+			}
+		}
+		return ResolvedImport{
+			Type:       ImportTypeAlias,
+			Original:   source,
+			Resolved:   resolvedPath,
+			Confidence: "safe",
+		}
+	}
+
 	if r.aliasPaths == nil {
 		return ResolvedImport{
 			Type:       ImportTypeAlias,
@@ -140,10 +162,13 @@ func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
 		}
 	}
 
-	prefix := strings.TrimSuffix(bestAlias, "/*")
 	mapping := targets[0]
-	suffix := strings.TrimPrefix(source, prefix)
-	suffix = strings.TrimPrefix(suffix, "/")
+	suffix := ""
+	if strings.HasSuffix(bestAlias, "/*") {
+		prefix := strings.TrimSuffix(bestAlias, "/*")
+		suffix = strings.TrimPrefix(source, prefix)
+		suffix = strings.TrimPrefix(suffix, "/")
+	}
 
 	mappingBase := strings.TrimSuffix(mapping, "/*")
 	baseURL := r.baseURL
@@ -194,11 +219,23 @@ func (r *Resolver) resolveFile(path string) (string, bool) {
 // given import source. This implements TypeScript's "longest prefix match" rule
 // for path mappings (e.g. @scope/core/* wins over @scope/* for "@scope/core/util").
 func (r *Resolver) findBestAlias(source string) string {
+	for alias := range r.aliasPaths {
+		if strings.HasSuffix(alias, "/*") {
+			continue
+		}
+		if source == alias {
+			return alias
+		}
+	}
+
 	bestAlias := ""
 	bestLen := 0
 	for alias := range r.aliasPaths {
+		if !strings.HasSuffix(alias, "/*") {
+			continue
+		}
 		prefix := strings.TrimSuffix(alias, "/*")
-		if strings.HasPrefix(source, prefix) && len(source) > len(prefix) && source[len(prefix)] == '/' {
+		if strings.HasPrefix(source, prefix+"/") {
 			if len(prefix) > bestLen {
 				bestAlias = alias
 				bestLen = len(prefix)

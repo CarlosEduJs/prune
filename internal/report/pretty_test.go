@@ -262,3 +262,30 @@ func TestPossibleDynamicUsageIsReview(t *testing.T) {
 		t.Fatalf("expected label 'possible dynamic usage: console.log', got: %s", output)
 	}
 }
+
+func TestPrettyIncludesCustomConfidenceInDetailAndSummary(t *testing.T) {
+	formatter, err := NewFormatter("pretty", FormatterOptions{
+		Duration: 5 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	findings := []rules.Finding{
+		{Confidence: "safe", Kind: "unused_export", File: "a.js", Symbol: "x"},
+		{Confidence: "custom_level", Kind: "unused_function", File: "b.js", Symbol: "y"},
+	}
+
+	data, err := formatter.Format(findings)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := string(data)
+	if !strings.Contains(output, "CUSTOM LEVEL") {
+		t.Fatalf("expected custom confidence label in output, got: %s", output)
+	}
+	if !strings.Contains(output, "b.js") {
+		t.Fatalf("expected custom confidence finding details, got: %s", output)
+	}
+}

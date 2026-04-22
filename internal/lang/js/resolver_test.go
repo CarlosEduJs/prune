@@ -67,8 +67,8 @@ func TestResolveAlias(t *testing.T) {
 	if got.Type != ImportTypeAlias {
 		t.Errorf("type = %v, want %v", got.Type, ImportTypeAlias)
 	}
-	if got.Resolved != "src/utils/helper.ts" {
-		t.Errorf("resolved = %q, want %q", got.Resolved, "src/utils/helper.ts")
+	if got.Resolved != "utils/helper" {
+		t.Errorf("resolved = %q, want %q", got.Resolved, "utils/helper")
 	}
 	if got.Confidence != "safe" {
 		t.Errorf("confidence = %q, want %q", got.Confidence, "safe")
@@ -95,11 +95,74 @@ func TestResolveAliasNotFound(t *testing.T) {
 	if got.Type != ImportTypeAlias {
 		t.Errorf("type = %v, want %v", got.Type, ImportTypeAlias)
 	}
-	if got.Resolved != "" {
-		t.Errorf("resolved = %q, want empty", got.Resolved)
+	if got.Resolved != "nonexistent" {
+		t.Errorf("resolved = %q, want %q", got.Resolved, "nonexistent")
 	}
-	if got.Confidence != "review" {
-		t.Errorf("confidence = %q, want %q", got.Confidence, "review")
+	if got.Confidence != "safe" {
+		t.Errorf("confidence = %q, want %q", got.Confidence, "safe")
+	}
+}
+
+func TestResolveAliasAtSlashUsesBaseURL(t *testing.T) {
+	cfg := &config.Config{
+		TsConfig: config.TsConfig{
+			Enabled: true,
+			BaseURL: "src",
+		},
+	}
+	fileIndex := map[string]scan.FileEntry{
+		"src/main.ts":         {Path: "testdata/src/main.ts", Rel: "src/main.ts"},
+		"src/utils/helper.ts": {Path: "testdata/src/utils/helper.ts", Rel: "src/utils/helper.ts"},
+	}
+
+	r := NewResolver(cfg, fileIndex)
+
+	got := r.Resolve("@/utils/helper", "src/main.ts")
+	if got.Type != ImportTypeAlias {
+		t.Errorf("type = %v, want %v", got.Type, ImportTypeAlias)
+	}
+	if got.Resolved != "src/utils/helper.ts" {
+		t.Errorf("resolved = %q, want %q", got.Resolved, "src/utils/helper.ts")
+	}
+	if got.Confidence != "safe" {
+		t.Errorf("confidence = %q, want %q", got.Confidence, "safe")
+	}
+}
+
+func TestFindBestAliasPrefersExactOverWildcard(t *testing.T) {
+	cfg := &config.Config{
+		TsConfig: config.TsConfig{
+			Enabled: true,
+			BaseURL: ".",
+			Paths: map[string][]string{
+				"@lib":   {"src/lib/index.ts"},
+				"@lib/*": {"src/lib/*"},
+			},
+		},
+	}
+
+	r := NewResolver(cfg, nil)
+
+	if got := r.findBestAlias("@lib"); got != "@lib" {
+		t.Fatalf("findBestAlias = %q, want %q", got, "@lib")
+	}
+}
+
+func TestFindBestAliasWildcardBoundary(t *testing.T) {
+	cfg := &config.Config{
+		TsConfig: config.TsConfig{
+			Enabled: true,
+			BaseURL: ".",
+			Paths: map[string][]string{
+				"@scope/*": {"src/scope/*"},
+			},
+		},
+	}
+
+	r := NewResolver(cfg, nil)
+
+	if got := r.findBestAlias("@scopeX/pkg"); got != "" {
+		t.Fatalf("findBestAlias = %q, want empty", got)
 	}
 }
 

@@ -213,6 +213,41 @@ func TestClassifyDynamicIndicators(t *testing.T) {
 	})
 }
 
+func TestDetectDynamicUsesAllRuleHighRiskPatterns(t *testing.T) {
+	cfg := &config.Config{
+		Rules: map[string]config.RuleConfig{
+			"unused_function": {
+				HighRiskPatterns: []string{"fnDanger", "sharedDanger"},
+			},
+			"unused_export": {
+				HighRiskPatterns: []string{"exportDanger", "sharedDanger"},
+			},
+			"unused_variable": {
+				HighRiskPatterns: []string{"varDanger"},
+			},
+		},
+	}
+
+	indicators := detectDynamic("fnDanger exportDanger varDanger sharedDanger", cfg)
+
+	want := []string{"fnDanger", "exportDanger", "varDanger", "sharedDanger"}
+	for _, pattern := range want {
+		if !contains(indicators, pattern) {
+			t.Fatalf("expected pattern %q in indicators: %v", pattern, indicators)
+		}
+	}
+
+	sharedCount := 0
+	for _, indicator := range indicators {
+		if indicator == "sharedDanger" {
+			sharedCount++
+		}
+	}
+	if sharedCount != 1 {
+		t.Fatalf("expected sharedDanger once, got %d in %v", sharedCount, indicators)
+	}
+}
+
 func TestCollectedReleaseUnused(t *testing.T) {
 	c := &Collected{
 		FeatureFlagRefs: map[string]int{"TODO": 5},

@@ -100,7 +100,7 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //no
 
 	grouped := groupByConfidence(findings)
 
-	for _, confidence := range confidenceOrder {
+	for _, confidence := range orderedConfidenceKeysFromGroups(grouped) {
 		fileGroups, ok := grouped[confidence]
 		if !ok || len(fileGroups) == 0 {
 			continue
@@ -111,12 +111,12 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //no
 			total += len(ff)
 		}
 
-		label := confidenceLabels[confidence]
-		icon := confidenceIcons[confidence]
+		label := confidenceLabel(confidence)
+		icon := confidenceIcon(confidence)
 		color := ""
 		reset := ""
 		if useColor {
-			color = confidenceColors[confidence]
+			color = confidenceColor(confidence)
 			reset = colorReset
 		}
 
@@ -296,16 +296,16 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 
 	b.WriteString("\n")
 
-	for _, confidence := range confidenceOrder {
+	for _, confidence := range orderedConfidenceKeysFromCounts(confCounts) {
 		c := confCounts[confidence]
 		if c == 0 {
 			continue
 		}
-		label := confidenceLabels[confidence]
+		label := confidenceLabel(confidence)
 		color := ""
 		reset := ""
 		if useColor {
-			color = confidenceColors[confidence]
+			color = confidenceColor(confidence)
 			reset = colorReset
 		}
 		fmt.Fprintf(&b, "  %s%-12s%s %d\n", color, label, reset, c)
@@ -361,6 +361,77 @@ func groupByConfidence(findings []rules.Finding) map[string]map[string][]rules.F
 		result[conf][f.File] = append(result[conf][f.File], f)
 	}
 	return result
+}
+
+func orderedConfidenceKeysFromGroups(grouped map[string]map[string][]rules.Finding) []string {
+	keys := make([]string, 0, len(grouped))
+	for key := range grouped {
+		keys = append(keys, key)
+	}
+	return orderedConfidenceKeys(keys)
+}
+
+func orderedConfidenceKeysFromCounts(counts map[string]int) []string {
+	keys := make([]string, 0, len(counts))
+	for key := range counts {
+		keys = append(keys, key)
+	}
+	return orderedConfidenceKeys(keys)
+}
+
+func orderedConfidenceKeys(keys []string) []string {
+	knownSet := map[string]bool{}
+	for _, known := range confidenceOrder {
+		knownSet[known] = true
+	}
+
+	present := map[string]bool{}
+	ordered := make([]string, 0, len(keys))
+	unknown := []string{}
+	for _, key := range keys {
+		if present[key] {
+			continue
+		}
+		present[key] = true
+		if knownSet[key] {
+			continue
+		}
+		unknown = append(unknown, key)
+	}
+
+	for _, known := range confidenceOrder {
+		if present[known] {
+			ordered = append(ordered, known)
+		}
+	}
+
+	sort.Strings(unknown)
+	ordered = append(ordered, unknown...)
+	return ordered
+}
+
+func confidenceLabel(confidence string) string {
+	if label, ok := confidenceLabels[confidence]; ok && label != "" {
+		return label
+	}
+	if confidence == "" {
+		return "UNKNOWN"
+	}
+	return strings.ToUpper(strings.ReplaceAll(confidence, "_", " "))
+}
+
+func confidenceIcon(confidence string) string {
+	if icon, ok := confidenceIcons[confidence]; ok && icon != "" {
+		return icon
+	}
+	return "•"
+}
+
+func confidenceColor(confidence string) string {
+	if color, ok := confidenceColors[confidence]; ok {
+		return color
+	}
+	return colorDim
 }
 
 func supportsColor() bool {
