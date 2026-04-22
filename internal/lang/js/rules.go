@@ -106,6 +106,9 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 			}
 			confidence := confidenceFor(cfg, "unused_export", "if_not_imported", "safe")
 			if isEntrypoint(cfg, file) {
+				if symbol == "default" {
+					continue
+				}
 				confidence = confidenceFor(cfg, "unused_export", "if_entrypoint", "review")
 			}
 			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_export") {
@@ -136,8 +139,6 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 		return findings
 	}
 
-	importedByFile := buildImportedSymbols(data)
-
 	for file, symbols := range data.FunctionDecls {
 		if !isRuleEnabled(cfg, "unused_function") {
 			continue
@@ -153,7 +154,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 			if counts[symbol] > 1 {
 				continue
 			}
-			if exported[symbol] && (isImportedSymbol(importedByFile[file], symbol) || isDefaultExportUsed(file, data)) {
+			if exported[symbol] {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_function", "default", "likely_dead")
@@ -191,7 +192,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 			if counts[symbol] > 1 {
 				continue
 			}
-			if exported[symbol] && (isImportedSymbol(importedByFile[file], symbol) || isDefaultExportUsed(file, data)) {
+			if exported[symbol] {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_variable", "default", "safe")
@@ -216,35 +217,6 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 	return findings
 }
 
-func buildImportedSymbols(data *Collected) map[string]map[string]bool {
-	imported := map[string]map[string]bool{}
-	if data == nil {
-		return imported
-	}
-	for file, specs := range data.ImportSpecs {
-		for _, spec := range specs {
-			if !strings.HasPrefix(spec.Source, ".") {
-				continue
-			}
-			resolved := resolveImportTarget(file, spec, data.Files)
-			if resolved == "" {
-				continue
-			}
-			if imported[resolved] == nil {
-				imported[resolved] = map[string]bool{}
-			}
-			if spec.Wildcard {
-				imported[resolved]["*"] = true
-				continue
-			}
-			for _, name := range spec.Names {
-				imported[resolved][name] = true
-			}
-		}
-	}
-	return imported
-}
-
 func exportedSymbolSet(exports []string) map[string]bool {
 	set := map[string]bool{}
 	for _, name := range exports {
@@ -253,29 +225,6 @@ func exportedSymbolSet(exports []string) map[string]bool {
 		}
 	}
 	return set
-}
-
-func isImportedSymbol(imported map[string]bool, symbol string) bool {
-	if imported == nil {
-		return false
-	}
-	if imported["*"] {
-		return true
-	}
-	return imported[symbol]
-}
-
-func isDefaultExportUsed(file string, data *Collected) bool {
-	if data == nil {
-		return false
-	}
-	if len(data.ExportSymbols[file]) == 0 {
-		return false
-	}
-	if !exportedSymbolSet(data.Exports[file])["default"] {
-		return false
-	}
-	return isImportedSymbol(buildImportedSymbols(data)[file], "default")
 }
 
 func ruleDeadFeatureFlags(cfg *config.Config, data *Collected) []rules.Finding {
@@ -438,7 +387,7 @@ func isEntrypoint(cfg *config.Config, file string) bool {
 		}
 	}
 	for _, pattern := range cfg.Entrypoints.Patterns {
-		if match, _ := filepath.Match(pattern, file); match {
+		if match, err := doublestar.Match(pattern, file); err == nil && match {
 			return true
 		}
 	}
