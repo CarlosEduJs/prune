@@ -54,8 +54,6 @@ type prettyFormatter struct {
 	opts FormatterOptions
 }
 
-
-
 func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //nolint:gocyclo
 	useColor := supportsColor()
 	var b strings.Builder
@@ -315,7 +313,7 @@ func (f prettyFormatter) summary(findings []rules.Finding, useColor bool) string
 
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "  Total        %d\n", len(findings))
-	
+
 	if useColor {
 		b.WriteString(colorDim + separator + colorReset)
 	} else {
