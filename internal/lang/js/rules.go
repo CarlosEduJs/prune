@@ -97,6 +97,7 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 	}
 	findings := []rules.Finding{}
 	for file, exports := range data.Exports {
+		fileHasHighRiskDynamic := hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_export")
 		lineMap := exportLineMap(data.ExportSymbols[file])
 		for _, symbol := range exports {
 			if usedExports[file] != nil {
@@ -111,7 +112,7 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 				}
 				confidence = confidenceFor(cfg, "unused_export", "if_entrypoint", "review")
 			}
-			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_export") {
+			if fileHasHighRiskDynamic {
 				confidence = confidenceFor(cfg, "unused_export", "if_high_risk_dynamic", "review")
 			}
 			line := 1
@@ -143,6 +144,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 		if !isRuleEnabled(cfg, "unused_function") {
 			continue
 		}
+		fileHasHighRiskDynamic := hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_function")
 		counts := data.Identifiers[file]
 		usage := data.UsageCounts[file]
 		lines := data.FunctionLines[file]
@@ -158,7 +160,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_function", "default", "likely_dead")
-			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_function") {
+			if fileHasHighRiskDynamic {
 				confidence = confidenceFor(cfg, "unused_function", "if_high_risk_dynamic", "review")
 			}
 			line := 1
@@ -181,6 +183,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 		if !isRuleEnabled(cfg, "unused_variable") {
 			continue
 		}
+		fileHasHighRiskDynamic := hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_variable")
 		counts := data.Identifiers[file]
 		usage := data.UsageCounts[file]
 		lines := data.VariableLines[file]
@@ -196,7 +199,7 @@ func ruleUnusedSymbols(cfg *config.Config, data *Collected) []rules.Finding {
 				continue
 			}
 			confidence := confidenceFor(cfg, "unused_variable", "default", "safe")
-			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_variable") {
+			if fileHasHighRiskDynamic {
 				confidence = confidenceFor(cfg, "unused_variable", "if_high_risk_dynamic", "review")
 			}
 			line := 1

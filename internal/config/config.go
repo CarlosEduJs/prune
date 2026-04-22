@@ -49,13 +49,13 @@ type TsConfig struct {
 }
 
 type RuleConfig struct {
-	Enabled       bool              `yaml:"enabled"`
-	Confidence    map[string]string `yaml:"confidence"`
-	Patterns      []string          `yaml:"patterns"`
-	Attributes    map[string]string `yaml:"attributes"`
-	Limit         int               `yaml:"limit"`
-	SafePatterns  []string          `yaml:"safe_patterns"`
-	HighRiskPatterns []string       `yaml:"high_risk_patterns"`
+	Enabled          bool              `json:"enabled" yaml:"enabled"`
+	Confidence       map[string]string `json:"confidence" yaml:"confidence"`
+	Patterns         []string          `json:"patterns" yaml:"patterns"`
+	Attributes       map[string]string `json:"attributes" yaml:"attributes"`
+	Limit            int               `json:"limit" yaml:"limit"`
+	SafePatterns     []string          `json:"safe_patterns" yaml:"safe_patterns"`
+	HighRiskPatterns []string          `json:"high_risk_patterns" yaml:"high_risk_patterns"`
 }
 
 func Load(path string) (*Config, error) {
