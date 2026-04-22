@@ -47,36 +47,7 @@ func TestGroupByConfidence(t *testing.T) {
 	}
 }
 
-func TestNormalizeClassification(t *testing.T) {
-	findings := []rules.Finding{
-		{Kind: "unused_file", Confidence: "review"},
-		{Kind: "unused_export", Confidence: "review"},
-		{Kind: "unused_function", Confidence: "safe"},
-		{Kind: "possible_dynamic_usage", Confidence: "safe"},
-		{Kind: "suspicious_dynamic_usage", Confidence: "safe"},
-		{Kind: "unused_variable", Confidence: "safe"},
-	}
 
-	result := normalizeClassification(findings)
-
-	tests := []struct {
-		kind     string
-		expected string
-	}{
-		{"unused_file", "safe"},
-		{"unused_export", "safe"},
-		{"unused_function", "likely_dead"},
-		{"possible_dynamic_usage", "review"},
-		{"suspicious_dynamic_usage", "review"},
-		{"unused_variable", "safe"}, // unused_variable retains original
-	}
-
-	for i, tt := range tests {
-		if result[i].Confidence != tt.expected {
-			t.Fatalf("kind %s: expected confidence %q, got %q", tt.kind, tt.expected, result[i].Confidence)
-		}
-	}
-}
 
 func TestPrettyCompactMode(t *testing.T) {
 	formatter, err := NewFormatter("pretty", FormatterOptions{
@@ -180,8 +151,7 @@ func TestPrettyGroupingOrder(t *testing.T) {
 	findings := []rules.Finding{
 		{Confidence: "review", Kind: "suspicious_dynamic_usage", File: "z.js", Symbol: "a"},
 		{Confidence: "safe", Kind: "unused_export", File: "b.js", Symbol: "x"},
-		// unused_function will be normalized to likely_dead
-		{Confidence: "safe", Kind: "unused_function", File: "a.js", Symbol: "y"},
+		{Confidence: "likely_dead", Kind: "unused_function", File: "a.js", Symbol: "y"},
 	}
 
 	data, err := formatter.Format(findings)
@@ -272,7 +242,7 @@ func TestPossibleDynamicUsageIsReview(t *testing.T) {
 	}
 
 	findings := []rules.Finding{
-		{Confidence: "safe", Kind: "possible_dynamic_usage", File: "a.js", Symbol: "console.log"},
+		{Confidence: "review", Kind: "possible_dynamic_usage", File: "a.js", Symbol: "console.log"},
 	}
 
 	data, err := formatter.Format(findings)

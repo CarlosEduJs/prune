@@ -108,6 +108,9 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 			if isEntrypoint(cfg, file) {
 				confidence = confidenceFor(cfg, "unused_export", "if_entrypoint", "review")
 			}
+			if hasHighRiskDynamic(data.DynamicIndicators[file], cfg, "unused_export") {
+				confidence = confidenceFor(cfg, "unused_export", "if_high_risk_dynamic", "review")
+			}
 			line := 1
 			if value, ok := lineMap[symbol]; ok {
 				line = value
