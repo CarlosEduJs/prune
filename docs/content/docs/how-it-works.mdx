@@ -92,7 +92,7 @@ Emits a finding when a file is not imported and is not matched as an entrypoint.
 
 ### `unused_export`
 
-Emits when an exported symbol has no importing usage. Entrypoint exports may be downgraded to `review` confidence.
+Emits when an exported symbol has no importing usage. For entrypoint files, the **default export is skipped** entirely (not flagged as unused) — only named exports on entrypoints are considered. Named entrypoint exports are downgraded to `review` confidence since they may be consumed at runtime.
 
 ### `unused_function` and `unused_variable`
 

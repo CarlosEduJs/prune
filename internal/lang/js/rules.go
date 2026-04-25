@@ -71,26 +71,29 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 	for file, specs := range data.ImportSpecs {
 		_ = file
 		for _, spec := range specs {
-			if !strings.HasPrefix(spec.Source, ".") {
+			targetFile := spec.Resolved
+			if targetFile == "" {
+				if !strings.HasPrefix(spec.Source, ".") {
+					continue
+				}
+				targetFile = resolveImportTarget(file, spec, data.Files)
+			}
+			if targetFile == "" {
 				continue
 			}
-			resolved := resolveImportTarget(file, spec, data.Files)
-			if resolved == "" {
-				continue
-			}
-			if usedExports[resolved] == nil {
-				usedExports[resolved] = map[string]bool{}
+			if usedExports[targetFile] == nil {
+				usedExports[targetFile] = map[string]bool{}
 			}
 			if spec.Wildcard || spec.SideEffect {
-				usedExports[resolved]["*"] = true
+				usedExports[targetFile]["*"] = true
 				continue
 			}
 			for _, name := range spec.Names {
-				usedExports[resolved][name] = true
+				usedExports[targetFile][name] = true
 			}
 			if spec.IsReexport {
 				if len(spec.Names) == 0 {
-					usedExports[resolved]["*"] = true
+					usedExports[targetFile]["*"] = true
 				}
 			}
 		}

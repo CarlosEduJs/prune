@@ -67,22 +67,18 @@ func TestResolveAlias(t *testing.T) {
 	if got.Type != ImportTypeAlias {
 		t.Errorf("type = %v, want %v", got.Type, ImportTypeAlias)
 	}
-	if got.Resolved != "utils/helper" {
-		t.Errorf("resolved = %q, want %q", got.Resolved, "utils/helper")
+	if got.Resolved != "src/utils/helper.ts" {
+		t.Errorf("resolved = %q, want %q", got.Resolved, "src/utils/helper.ts")
 	}
 	if got.Confidence != "safe" {
 		t.Errorf("confidence = %q, want %q", got.Confidence, "safe")
 	}
 }
 
-func TestResolveAliasNotFound(t *testing.T) {
+func TestResolveAliasNotConfigured(t *testing.T) {
 	cfg := &config.Config{
 		TsConfig: config.TsConfig{
-			Enabled: true,
-			BaseURL: ".",
-			Paths: map[string][]string{
-				"@/*": {"src/*"},
-			},
+			Enabled: false,
 		},
 	}
 	fileIndex := map[string]scan.FileEntry{
@@ -91,23 +87,26 @@ func TestResolveAliasNotFound(t *testing.T) {
 
 	r := NewResolver(cfg, fileIndex)
 
-	got := r.Resolve("@/nonexistent", "src/main.ts")
+	got := r.Resolve("@/utils/helper", "src/main.ts")
 	if got.Type != ImportTypeAlias {
 		t.Errorf("type = %v, want %v", got.Type, ImportTypeAlias)
 	}
-	if got.Resolved != "nonexistent" {
-		t.Errorf("resolved = %q, want %q", got.Resolved, "nonexistent")
+	if got.Resolved != "" {
+		t.Errorf("resolved = %q, want %q", got.Resolved, "")
 	}
-	if got.Confidence != "safe" {
-		t.Errorf("confidence = %q, want %q", got.Confidence, "safe")
+	if got.Confidence != "review" {
+		t.Errorf("confidence = %q, want %q", got.Confidence, "review")
 	}
 }
 
-func TestResolveAliasAtSlashUsesBaseURL(t *testing.T) {
+func TestResolveAliasWithTsConfig(t *testing.T) {
 	cfg := &config.Config{
 		TsConfig: config.TsConfig{
 			Enabled: true,
-			BaseURL: "src",
+			BaseURL: ".",
+			Paths: map[string][]string{
+				"@/*": {"src/*"},
+			},
 		},
 	}
 	fileIndex := map[string]scan.FileEntry{

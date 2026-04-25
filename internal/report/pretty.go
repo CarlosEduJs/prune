@@ -58,17 +58,6 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //no
 	useColor := supportsColor()
 	var b strings.Builder
 
-	if len(findings) == 0 {
-		b.WriteString(f.header(0, useColor))
-		b.WriteString("\n")
-		msg := "✨ No dead code found!\n"
-		if useColor {
-			msg = colorGreen + msg + colorReset
-		}
-		b.WriteString(msg)
-		return []byte(b.String()), nil
-	}
-
 	if f.opts.Only != "" {
 		filtered := make([]rules.Finding, 0, len(findings))
 		for _, finding := range findings {
@@ -90,6 +79,17 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //no
 	}
 
 	findings = deduplicateUnusedFiles(findings)
+
+	if len(findings) == 0 {
+		b.WriteString(f.header(0, useColor))
+		b.WriteString("\n")
+		msg := "✨ No dead code found!\n"
+		if useColor {
+			msg = colorGreen + msg + colorReset
+		}
+		b.WriteString(msg)
+		return []byte(b.String()), nil
+	}
 
 	b.WriteString(f.header(len(findings), useColor))
 	b.WriteString("\n")

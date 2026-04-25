@@ -136,7 +136,7 @@ report:
 
 ## Migration from v1
 
-If you're upgrading from config version `1`, the only required change is bumping the version number:
+Prune supports configuration versions `1` and `2`. If you're upgrading from config version `1`, bumping to version `2` is optional — it's only required if you want to use the `ts_config` feature for path aliases.
 
 ```yaml
 // [!code --]
@@ -145,7 +145,7 @@ version: 1
 version: 2
 ```
 
-Version `2` adds support for path aliases via `ts_config`. Configs using version `1` continue to work — Prune only requires `version >= 1`.
+Version `2` adds support for path aliases via `ts_config`. Configs using version `1` continue to work — Prune accepts any version `>= 1`.
 
 ---
 
@@ -154,11 +154,9 @@ Version `2` adds support for path aliases via `ts_config`. Configs using version
 ### `version`
 
 **Type:** integer  
-**Required:** yes
+**Required:** yes (must be non-zero)
 
-Schema version. Must be `2` (or `1` for legacy configs).
-
-Prune returns an error if this field is absent or set to `0`.
+Prune accepts config versions `1` or `2`. Version `2` enables `ts_config` for path aliases; version `1` works without them. Prune returns an error if this field is absent or set to `0`.
 
 ---
 
