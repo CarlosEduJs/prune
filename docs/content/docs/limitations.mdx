@@ -16,7 +16,7 @@ Prune currently supports only JavaScript and TypeScript projects (`language: js-
 
 ## Dynamic Imports and `require()`
 
-Prune detects dynamic constructs — `eval`, `Function`, `require`, and `import()` — as `suspicious_dynamic_usage` findings. When any of these are present in a file, the confidence of `unused_function` and `unused_variable` findings for that file is downgraded to `review`.
+Prune detects dynamic constructs — `eval`, `Function`, `require`, and `import()` — as `suspicious_dynamic_usage` findings. When high-risk dynamic patterns are present in a file, confidence for `unused_function`, `unused_variable`, and `unused_export` may be downgraded (typically to `review`, depending on rule configuration).
 
 However, Prune does not resolve dynamic import arguments. If your code uses patterns like:
 
@@ -59,8 +59,9 @@ Aliases not configured in `ts_config` are treated as external and skipped.
 ### Alias Resolution Edge Cases
 
 // [!code highlight]
-- **Scoped patterns** like `@scope/*` are not supported — only exact prefix matches (`@/*`, `~/*`)
-- **Multi-level wildcards** like `@utils/*/helper` resolve only the first match segment
+- **Scoped patterns** like `@scope/*` are supported when configured in `ts_config.paths`
+- **Longest-prefix matching** is used when multiple aliases can match the same import
+- **Complex wildcard patterns** like `@utils/*/helper` are not fully supported (Prune expects exact aliases or `/*` suffix patterns)
 - **Missing targets** are marked `review` rather than `safe` (conservative)
 
 ---

@@ -27,7 +27,7 @@ prune version
 **Output:**
 
 ```
-prune version  0.3.0-beta.1
+prune version  0.4.0-beta.1
 ```
 
 No flags are accepted by this command.
@@ -83,6 +83,7 @@ prune scan [flags]
 | `--fail-on-findings` | bool | `false` | Exit with a non-zero status code if any findings match the confidence filter |
 | `--stream` | bool | `false` | Enable streaming mode — emit findings incrementally as files are processed |
 | `--stream-interval` | int | `250` | Interval in milliseconds between streaming flushes |
+| `--stream-batch-size` | int | `50` | Number of files processed per streaming batch |
 | `--compact` | bool | `false` | Show only summary counts, without individual findings |
 | `--only` | string | `""` | Show only findings with this confidence level: `safe`, `review`, or `likely_dead` |
 | `--deletable` | bool | `false` | Show only files that are safe to delete (no living imports) |
@@ -119,6 +120,9 @@ prune scan --stream --format ndjson
 
 # Stream with a faster flush interval
 prune scan --stream --stream-interval 100
+
+# Stream in smaller file batches
+prune scan --stream --stream-batch-size 20 --format ndjson
 ```
 
 **Notes on streaming:**
