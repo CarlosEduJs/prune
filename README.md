@@ -1,202 +1,155 @@
 # Prune
 
 > [!NOTE]
-> **Prune is currently in Beta (v0.3.0-beta.1).** It is under active development, and features, CLI flags, or output formats may change before the stable release.
+> **Prune is currently in Beta (`v0.4.0-beta.1`).** It is under active development, and features, CLI flags, or output formats may change before stable release.
 
-Static analysis tool designed to identify dead code in JavaScript and TypeScript projects (for now...).
-
-## Description
-
-Prune identifies unreachable code by building a dependency graph from defined entrypoints. It helps maintain clean codebases by detecting files, exports, functions, and variables that are no longer referenced in the application lifecycle.
+Prune is a static analysis CLI that finds dead code in JavaScript and TypeScript projects by building a reachability graph from your configured entrypoints.
 
 ## Features
 
-- Dependency graph analysis utilizing Tree-sitter grammars.
-- Support for `.js`, `.jsx`, `.ts`, and `.tsx` extensions.
-- Detection types:
-    - Orphaned files (files never imported).
-    - Unused exports (symbols exported but never imported).
-    - Unused functions and variables.
-    - Suspicious dynamic code usage (e.g., `eval`, `Function`).
-- Human-friendly CLI output format grouped by file (`pretty`).
-- Machine-readable output (JSON, NDJSON) for automation.
-- **Path alias resolution** for TypeScript aliases like `@/` and `~/`.
-- **Streaming mode** for partial results in real-time.
-- CI/CD integration via exit codes and finding thresholds.
-- Cross-platform support (Linux, macOS, Windows).
-
-## How it Works
-
-The tool is written in Go and uses Tree-sitter for high-performance parsing. 
-
-- **internal/scan**: Manages file system crawling and glob pattern matching.
-- **internal/lang/js**: Implements the JavaScript and TypeScript parsers and AST traversal logic.
-- **internal/rules**: Contains the logic to correlate definitions and references to identify dead code.
-- **internal/report**: Handles data formatting for the CLI.
-
-The analysis starts from the `entrypoints` defined in the configuration. Any file or symbol not reachable from these roots is reported.
+- Tree-sitter-based analysis for `.js`, `.jsx`, `.ts`, and `.tsx`
+- Finds:
+  - `unused_file`
+  - `unused_export`
+  - `unused_function`
+  - `unused_variable`
+  - `possible_dynamic_usage`
+  - `suspicious_dynamic_usage`
+- Confidence levels: `safe`, `likely_dead`, `review`
+- Output formats: `pretty` (and `table` alias), `json`, `ndjson`
+- Streaming mode with configurable interval and batch size
+- TypeScript path alias support via `ts_config` (`@/*`, `~/`, `@scope/*`, etc.)
+- CI/CD-ready via `--fail-on-findings`
 
 ## Installation
 
 ### Requirements
 
-- Go 1.24 or higher.
+- Go `1.24+`
+- CGO enabled (required by Tree-sitter bindings)
 
-### Building from Source
+### Build from source
 
 ```bash
 go build -o prune ./cmd/prune
 ```
 
-### Check version
+### Install with `go install`
+
+```bash
+go install github.com/carlosedujs/prune/cmd/prune@latest
+```
+
+### Verify
 
 ```bash
 prune version
 ```
 
-## Usage
+Expected output:
 
-### Initialize
+```text
+prune version  0.4.0-beta.1
+```
 
-Generate a default configuration file in the current directory:
+## Quick Start
+
+Initialize config:
 
 ```bash
 prune init
 ```
 
-### Scan
-
-Perform code analysis:
+Run scan:
 
 ```bash
 prune scan
 ```
 
-Flags:
-- `--config`: Path to the configuration file (default: `prune.yaml`).
-- `--format`: Output format: `pretty`, `json`, `ndjson`, or `table` (alias for `pretty`).
-- `--min-confidence`: Minimum confidence level to report (`safe`, `likely_dead`, `review`).
-- `--fail-on-findings`: Exit with a non-zero status code if problems are detected.
-- `--stream`: Enable streaming mode for partial results in real-time.
-- `--stream-interval`: Interval in ms between stream flushes (default: 250ms).
-- `--compact`: Show only summary counts.
-- `--only`: Show only findings with this confidence.
-- `--deletable`: Show only files that are safe to delete.
+Common scan flags:
 
+- `--config`: Path to config (default: `prune.yaml`)
+- `--format`: `pretty`, `json`, `ndjson`, or `table`
+- `--min-confidence`: `safe`, `likely_dead`, `review`
+- `--paths` (repeatable): Override scan paths
+- `--fail-on-findings`: Exit non-zero if findings remain after filters
+- `--stream`: Enable streaming mode
+- `--stream-interval`: Flush interval in milliseconds (default: `250`)
+- `--stream-batch-size`: Files per stream batch (default: `50`)
+- `--compact`: Show summary counts only
+- `--only`: Show only one confidence level
+- `--deletable`: Show only `unused_file` findings with `safe` confidence
 
-Pretty Output
+## Output
 
-```bash
-Prune 0.3.0-beta.1 — 11 issues found in 9ms
+### Pretty (default)
 
-✔ SAFE (1)
+```text
+Prune v0.4.0-beta.1 — 4 issues found in 340ms
 
-  utils/unused.ts
-  └─ unused file: unused.ts
+✔ SAFE (2)
 
-⚠ REVIEW (10)
+  src/utils/legacy.ts
+  └─ unused file: legacy.ts
 
-  components/Dashboard.tsx
-  └─ possible dynamic usage: user.name
-  └─ possible dynamic usage: user.email
+✖ LIKELY DEAD (1)
 
-  main.ts
-  └─ possible dynamic usage: console.log
-  └─ possible dynamic usage: db.save
-  └─ possible dynamic usage: bootstrap().catch
-  └─ possible dynamic usage: console.error
+  src/lib/helpers.ts
+  └─ unused function: formatDeprecated
 
-  services/db.ts
-  └─ possible dynamic usage: this.items.push
-  └─ possible dynamic usage: this.items
-  └─ possible dynamic usage: this.items.find
-  └─ possible dynamic usage: i.id
+⚠ REVIEW (1)
+
+  src/loader.ts
+  └─ suspicious dynamic usage: require
 
 ─────────────────────────────────
 Summary
-
+─────────────────────────────────
   Files        1
-  Dynamic      10
+  Functions    1
+  Suspicious   1
 
-  SAFE         1
-  REVIEW       10
+  SAFE         2
+  LIKELY DEAD  1
+  REVIEW       1
 
-  Total        11
-
-Done in 9ms
+  Total        4
+─────────────────────────────────
+Done in 340ms
 ```
 
-### JSON Output
-
-For automation, use JSON format with structured output:
+### JSON
 
 ```bash
 prune scan --format json
 ```
 
-Output includes summary, findings, and metadata:
+Returns a root object with:
 
-```json
-{
-  "summary": {
-    "files": 3,
-    "issues": 12,
-    "safe": 7,
-    "review": 5
-  },
-  "findings": [
-    {
-      "id": "unused_file:src/utils/legacy.ts",
-      "kind": "unused_file",
-      "confidence": "safe",
-      "file": "src/utils/legacy.ts",
-      "line": 1,
-      "symbol": "legacy.ts",
-      "reason": "file is not referenced by any import"
-    }
-    // ... more findings
-  ],
-  "metadata": {
-    "entrypoints": ["src/main.ts", "src/pages/**"],
-    "scan_time_ms": 9
-  }
-}
-```
+- `summary`
+- `findings`
+- `metadata`
 
-### Streaming Mode
-
-For large projects, you can use streaming mode to receive results incrementally:
+### NDJSON
 
 ```bash
-# Stream results as NDJSON (one JSON object per line)
+prune scan --format ndjson
+```
+
+Streaming mode is designed for NDJSON:
+
+```bash
 prune scan --stream --format ndjson
-
-# Faster flush interval (100ms)
-prune scan --stream --stream-interval 100
-
-# Can also use with json format (auto-converted to ndjson)
-prune scan --stream --format json
+prune scan --stream --stream-interval 100 --stream-batch-size 20 --format ndjson
 ```
 
-Streaming outputs findings in real-time as files are processed. This is useful for:
-- Large codebases where you want immediate feedback
-- CI/CD pipelines that want to stream results to external systems
-- Debugging analysis progress
+If `--stream` is used with `--format json`, output is promoted to NDJSON.
 
-### List Rules
-
-List all available analysis rules:
-
-```bash
-prune rules
-```
-
-## Configuration
-
-Configuration is managed via `prune.yaml`.
+## Configuration (`prune.yaml`)
 
 ```yaml
 version: 2
+
 project:
   name: my-project
   language: js-ts
@@ -216,80 +169,96 @@ scan:
   include:
     - "**/*.ts"
     - "**/*.tsx"
+    - "**/*.js"
+    - "**/*.jsx"
   exclude:
-    - "node_modules/**"
-    - "dist/**"
+    - node_modules/**
+    - dist/**
+    - build/**
   stream:
-    enabled: true
+    enabled: false
     interval_ms: 250
+    batch_size: 50
+
 entrypoints:
   files:
     - src/main.ts
+  patterns:
+    - src/pages/**
+
 rules:
   unused_function:
     enabled: true
+    confidence:
+      default: likely_dead
+      if_high_risk_dynamic: review
+  unused_variable:
+    enabled: true
+    confidence:
+      default: safe
+      if_exported: likely_dead
+      if_high_risk_dynamic: review
   unused_export:
     enabled: true
+  unused_file:
+    enabled: true
+  possible_dynamic_usage:
+    enabled: true
+  suspicious_dynamic_usage:
+    enabled: true
+
 report:
-  format: pretty
+  format: table
   min_confidence: safe
 ```
 
-## Development
+## CI/CD
 
-### Running Tests
-
-```bash
-go test ./...
-```
-
-### Manual Testing
-
-The project includes examples in the `examples/` directory:
-
-```bash
-go run ./cmd/prune scan --config examples/js-complex/prune.yaml
-```
-
-## CI/CD Integration
-
-To utilize Prune in a CI/CD environment, you can install the binary and incorporate it as a validation step.
-
-### GitHub Actions Example
+GitHub Actions example:
 
 ```yaml
 name: Code Quality
 on: [push, pull_request]
 
 jobs:
-  analysis:
+  dead-code:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
-          
+          go-version: "1.24"
+
       - name: Install Prune
         run: go install github.com/carlosedujs/prune/cmd/prune@latest
-        
-      - name: Run Analysis
-        run: prune scan --fail-on-findings
+
+      - name: Run analysis
+        run: prune scan --fail-on-findings --min-confidence safe
 ```
 
-The `--fail-on-findings` flag ensures that the pipeline exits with a non-zero status code if unreachable dead code is detected, facilitating automated code quality enforcement.
+## Development
 
-## Limitations / Known Issues
+Run tests:
 
-> [!TIP]
-> **Handling False Positives:** Dynamic code patterns (like `eval`, bracket notation `obj[var]`, or dynamic imports) can't always be strictly resolved statically. Prune flags these as `REVIEW` rather than `SAFE` so you can manually verify them, minimizing the risk of accidentally deleting actively used code!
+```bash
+go test ./...
+```
 
-- Support is currently restricted to JavaScript and TypeScript ecosystems.
-- Dynamic imports or class property access via strings may result in false positives (marked as `REVIEW`).
-- Large codebases with circular dependencies may require higher memory allocation during Graph traversal.
-- Scoped alias patterns like `@scope/*` are not supported.
+Run against example project:
+
+```bash
+go run ./cmd/prune scan --config examples/js-complex/prune.yaml
+```
+
+## Limitations
+
+- Static analysis cannot fully resolve all runtime-dynamic patterns.
+- External consumers outside scan scope can make exports look unused.
+- Syntax-error files fall back to regex extraction, which is less precise.
+
+See full docs in `docs/content/docs/limitations.mdx`.
 
 ## License
 
