@@ -111,28 +111,6 @@ func (r *Resolver) resolveRelative(source, fromFile string) ResolvedImport {
 }
 
 func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
-	if strings.HasPrefix(source, "@/") {
-		baseURL := r.baseURL
-		if baseURL == "." {
-			baseURL = ""
-		}
-		resolvedPath := filepath.ToSlash(filepath.Clean(filepath.Join(baseURL, strings.TrimPrefix(source, "@/"))))
-		if target, ok := r.resolveFile(resolvedPath); ok {
-			return ResolvedImport{
-				Type:       ImportTypeAlias,
-				Original:   source,
-				Resolved:   target,
-				Confidence: "safe",
-			}
-		}
-		return ResolvedImport{
-			Type:       ImportTypeAlias,
-			Original:   source,
-			Resolved:   resolvedPath,
-			Confidence: "safe",
-		}
-	}
-
 	if r.aliasPaths == nil {
 		return ResolvedImport{
 			Type:       ImportTypeAlias,
