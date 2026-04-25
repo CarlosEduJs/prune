@@ -98,7 +98,6 @@ To run Prune and log findings without blocking the pipeline:
 
 In CI, JSON or NDJSON output is more useful than the table format for downstream tools:
 
-// [!code ++]
 ```bash
 # Count total safe findings (updated for new JSON structure)
 prune scan --format json | jq '.findings | map(select(.confidence == "safe")) | length'
@@ -117,9 +116,7 @@ fi
 <Callout type="info">
 The new JSON format wraps findings in a root object with `summary` and `metadata`. Update any jq filters to access `.findings` first.
 </Callout>
-// [!code --]
 
-// [!code highlight]
 ```bash
 # Count total safe findings
 prune scan --format json | jq 'map(select(.confidence == "safe")) | length'
@@ -149,7 +146,7 @@ prune scan --stream --format ndjson
 Each finding is printed to stdout as it is discovered. This is useful when the full scan takes several seconds and you want early visibility in logs.
 
 <Callout type="info">
-Streaming mode processes files in batches of up to 50, emitted every `--stream-interval` milliseconds (default: 250ms). Results from streaming mode may appear in a different order than standard mode.
+Streaming mode processes files in batches controlled by `--stream-batch-size` (default: `50`) and emitted every `--stream-interval` milliseconds (default: `250`). Results from streaming mode may appear in a different order than standard mode.
 </Callout>
 
 ---
@@ -203,7 +200,7 @@ rules:
     enabled: true
   unused_file:
     enabled: true
-  dead_feature_flag:
+  possible_dynamic_usage:
     enabled: false
   suspicious_dynamic_usage:
     enabled: true

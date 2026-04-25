@@ -6,7 +6,7 @@ icon: Settings
 
 Prune is configured through a YAML file, by default named `prune.yaml` in the current directory. You can generate a starting config with `prune init`, or write one from scratch using the reference below.
 
-The `version` field is required and must be `2` (or `1` for legacy configs). Prune will refuse to run if `version` is missing or zero.
+The `version` field is required and must be `2` (or `1` for legacy configs). Prune refuses to run if `version` is missing or zero.
 
 ## Full Schema
 
@@ -44,6 +44,7 @@ scan:
   stream:
     enabled: false
     interval_ms: 250
+    batch_size: 50
 
 entrypoints:
   files:
@@ -62,18 +63,51 @@ rules:
     enabled: true
     confidence:
       default: likely_dead
-      if_dynamic_usage: review
+      if_high_risk_dynamic: review
+    high_risk_patterns:
+      - eval
+      - Function
+      - 'import('
+    safe_patterns:
+      - window
+      - document
+      - Math
+      - JSON
+      - Object
+      - Array
+      - process
+      - Buffer
+      - setTimeout
+      - setInterval
+      - console
   unused_variable:
     enabled: true
     confidence:
       default: safe
       if_exported: likely_dead
-      if_dynamic_usage: review
+      if_high_risk_dynamic: review
+    high_risk_patterns:
+      - eval
+      - Function
+      - 'import('
+    safe_patterns:
+      - window
+      - document
+      - Math
+      - JSON
+      - Object
+      - Array
+      - process
+      - Buffer
+      - setTimeout
+      - setInterval
+      - console
   unused_export:
     enabled: true
     confidence:
       if_not_imported: safe
       if_entrypoint: review
+      if_high_risk_dynamic: review
   unused_file:
     enabled: true
     confidence:
@@ -95,14 +129,14 @@ rules:
       default: review
 
 report:
-  format: pretty
+  format: table
   min_confidence: safe
   include_evidence: true
 ```
 
 ## Migration from v1
 
-If you're upgrading from config version `1`, the only change needed is bumping the version number:
+If you're upgrading from config version `1`, the only required change is bumping the version number:
 
 ```yaml
 // [!code --]
@@ -111,81 +145,7 @@ version: 1
 version: 2
 ```
 
-Version `2` adds support for path aliases via `ts_config`.Configs using version `1` will continue to work — Prune only requires `version >= 1`.
-
-scan:
-  paths:
-    - src
-  include:
-    - '**/*.ts'
-    - '**/*.tsx'
-    - '**/*.js'
-    - '**/*.jsx'
-  exclude:
-    - node_modules/**
-    - dist/**
-    - build/**
-    - .next/**
-    - out/**
-    - coverage/**
-  stream:
-    enabled: false
-    interval_ms: 250
-
-entrypoints:
-  files:
-    - src/index.ts
-  patterns:
-    - src/pages/**
-    - src/routes/**
-
-feature_flags:
-  patterns:
-    - 'flags\.[A-Z0-9_]+'
-    - 'featureFlags\.[A-Za-z0-9_]+'
-
-rules:
-  unused_function:
-    enabled: true
-    confidence:
-      default: likely_dead
-      if_dynamic_usage: review
-  unused_variable:
-    enabled: true
-    confidence:
-      default: safe
-      if_exported: likely_dead
-      if_dynamic_usage: review
-  unused_export:
-    enabled: true
-    confidence:
-      if_not_imported: safe
-      if_entrypoint: review
-  unused_file:
-    enabled: true
-    confidence:
-      default: safe
-      if_entrypoint: review
-  possible_dynamic_usage:
-    enabled: true
-    confidence:
-      if_never_referenced: safe
-      if_dynamic_reference: review
-  suspicious_dynamic_usage:
-    enabled: true
-    patterns:
-      - eval
-      - Function
-      - require
-      - 'import('
-    confidence:
-      default: review
-
-report:
-  format: pretty
-  min_confidence: safe
-  include_evidence: true
-```
+Version `2` adds support for path aliases via `ts_config`. Configs using version `1` continue to work — Prune only requires `version >= 1`.
 
 ---
 
@@ -196,13 +156,9 @@ report:
 **Type:** integer  
 **Required:** yes
 
-// [!code --]
-Schema version. Must be `1`.
-// [!code ++]
 Schema version. Must be `2` (or `1` for legacy configs).
-// [!code focus]
 
-Prune will return an error if this field is absent or set to `0`.
+Prune returns an error if this field is absent or set to `0`.
 
 ---
 
@@ -221,7 +177,7 @@ A human-readable name for the project. Used for display purposes only.
 **Required:** yes (effectively)  
 **Accepted values:** `js-ts`
 
-The language mode to use for analysis. Currently only `js-ts` is supported. If missing or set to an unrecognized value, `prune scan` will return an error.
+The language mode used for analysis. Currently only `js-ts` is supported. If missing or unrecognized, `prune scan` returns an error.
 
 ---
 
@@ -232,47 +188,54 @@ The language mode to use for analysis. Currently only `js-ts` is supported. If m
 **Type:** list of strings  
 **Default:** `["."]`
 
-Directories to walk when collecting source files. Paths are resolved relative to the directory containing `prune.yaml`, unless they are absolute. If `--paths` is passed on the CLI, it overrides this field entirely.
+Directories to walk when collecting source files. Paths are resolved relative to the directory containing `prune.yaml`, unless they are absolute. If `--paths` is passed on the CLI, it overrides this field.
 
 #### `scan.include`
 
 **Type:** list of glob patterns  
 **Default:** `["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"]`
 
-A file must match at least one include pattern to be analyzed. Uses [doublestar](https://github.com/bmatcuk/doublestar) glob syntax. If empty, all files under `scan.paths` are candidates (before exclusion).
+A file must match at least one include pattern to be analyzed. Uses [doublestar](https://github.com/bmatcuk/doublestar) syntax.
 
 #### `scan.exclude`
 
 **Type:** list of glob patterns  
 **Default:** `["node_modules/**", "dist/**", "build/**", ".next/**", "out/**", "coverage/**"]`
 
-Files and directories matching any exclude pattern are skipped. Directory exclusion is applied early — matching directories are not walked. Uses doublestar glob syntax.
+Files and directories matching any exclude pattern are skipped.
 
 #### `scan.stream.enabled`
 
 **Type:** boolean  
 **Default:** `false`
 
-Enables streaming mode. When true, Prune emits findings as batches of files are processed, rather than waiting for the full analysis to complete.
+Enables streaming mode. When true, Prune emits findings in file batches while scanning.
 
 #### `scan.stream.interval_ms`
 
 **Type:** integer  
 **Default:** `250`
 
-Interval in milliseconds between stream flushes. A batch is emitted when either 50 files have been processed or this interval has elapsed since the last flush.
+Interval in milliseconds between streaming flushes.
+
+#### `scan.stream.batch_size`
+
+**Type:** integer  
+**Default:** `50`
+
+Number of files processed per streaming batch. Must be greater than zero.
 
 ---
 
 ### `entrypoints`
 
-Entrypoints define the roots of the dependency graph. Files reachable from entrypoints — directly or transitively — are considered alive. Files and exports not reachable from any entrypoint are candidates for the `unused_file` and `unused_export` rules.
+Entrypoints define the roots of the dependency graph. Files reachable from entrypoints are considered alive.
 
 #### `entrypoints.files`
 
 **Type:** list of strings
 
-Explicit file paths that serve as entrypoints. Paths are matched against relative paths within the scanned tree using exact string comparison.
+Explicit file paths treated as entrypoints.
 
 ```yaml
 entrypoints:
@@ -285,14 +248,14 @@ entrypoints:
 
 **Type:** list of glob patterns
 
-Files whose relative paths match any of these patterns are treated as entrypoints. Uses doublestar glob syntax.
+Files whose relative paths match these patterns are treated as entrypoints.
 
 ```yaml
 entrypoints:
   patterns:
-    - src/pages/**      # Next.js pages
-    - src/routes/**     # React Router routes
-    - src/app/**/*.ts   # all TypeScript files in src/app
+    - src/pages/**
+    - src/routes/**
+    - src/app/**/*.ts
 ```
 
 ---
@@ -304,7 +267,7 @@ entrypoints:
 **Type:** list of regular expression strings  
 **Default:** `["flags\\.[A-Z0-9_]+", "featureFlags\\.[A-Za-z0-9_]+"]`
 
-Regular expressions used to detect feature flag references in source code. The `possible_dynamic_usage` rule uses these patterns to find flag accesses in the AST (via `member_expression` and `subscript_expression` nodes) and report flags that are never referenced.
+Regular expressions used to detect feature flag references. The `possible_dynamic_usage` rule uses these patterns.
 
 ```yaml
 feature_flags:
@@ -318,32 +281,34 @@ feature_flags:
 
 ### `rules`
 
-Each rule can be enabled or disabled and has configurable confidence overrides. If a rule key is absent from the config, the rule defaults to **enabled**.
+Each rule can be enabled/disabled and configured with confidence overrides.
 
 #### Rule fields
 
 | Field | Type | Description |
 |---|---|---|
-| `enabled` | bool | Whether the rule runs. Default: `true` |
-| `confidence` | map | Maps named confidence keys to confidence levels (`safe`, `likely_dead`, `review`) |
-| `patterns` | list of strings | Patterns for rules that support custom pattern matching (e.g., `suspicious_dynamic_usage`) |
+| `enabled` | bool | Whether the rule runs (default: `true`) |
+| `confidence` | map | Maps confidence keys to levels (`safe`, `likely_dead`, `review`) |
+| `patterns` | list of strings | Pattern list for supported rules (for example `suspicious_dynamic_usage`) |
+| `high_risk_patterns` | list of strings | Dynamic patterns that downgrade confidence in `unused_*` rules |
+| `safe_patterns` | list of strings | Dynamic patterns considered safe context in `unused_*` rules |
 
 #### `rules.unused_function`
 
-Detects functions declared in a file but never called or referenced.
+Detects functions declared but never referenced.
 
 ```yaml
 rules:
   unused_function:
     enabled: true
     confidence:
-      default: likely_dead          # no dynamic usage in the file
-      if_dynamic_usage: review      # file contains eval/require/import()
+      default: likely_dead
+      if_high_risk_dynamic: review
 ```
 
 #### `rules.unused_variable`
 
-Detects variables declared in a file but never referenced.
+Detects variables declared but never referenced.
 
 ```yaml
 rules:
@@ -352,25 +317,26 @@ rules:
     confidence:
       default: safe
       if_exported: likely_dead
-      if_dynamic_usage: review
+      if_high_risk_dynamic: review
 ```
 
 #### `rules.unused_export`
 
-Detects exported symbols (functions, classes, constants) that are never imported by any other file in the analyzed set.
+Detects exported symbols never imported by other files in the analyzed set.
 
 ```yaml
 rules:
   unused_export:
     enabled: true
     confidence:
-      if_not_imported: safe        # exported but not imported by anyone
-      if_entrypoint: review        # exported from an entrypoint file
+      if_not_imported: safe
+      if_entrypoint: review
+      if_high_risk_dynamic: review
 ```
 
 #### `rules.unused_file`
 
-Detects files that are never imported by any other file reachable from entrypoints.
+Detects files not imported by any other reachable file.
 
 ```yaml
 rules:
@@ -383,7 +349,9 @@ rules:
 
 #### `rules.possible_dynamic_usage`
 
-Detects feature flag references matching `feature_flags.patterns` that are never referenced in the codebase. If no flags are found at all matching the patterns, a single finding is emitted.
+Detects configured feature flag patterns with uncertain or missing static references.
+
+This rule replaced `dead_feature_flag`; the old key is still accepted for backward compatibility.
 
 ```yaml
 rules:
@@ -396,7 +364,7 @@ rules:
 
 #### `rules.suspicious_dynamic_usage`
 
-Detects use of APIs that block static certainty about reachability. By default checks for `eval`, `Function`, `require`, and `import(`. Customizable via `patterns`.
+Detects dynamic APIs that block static certainty.
 
 ```yaml
 rules:
@@ -415,12 +383,12 @@ rules:
 
 ### `report`
 
-These fields set defaults for the output, but CLI flags (`--format`, `--min-confidence`) take precedence over config values when provided.
+These fields define defaults for output formatting.
 
 #### `report.format`
 
 **Type:** string  
-**Default:** `pretty`  
+**Default:** `table`  
 **Accepted values:** `pretty`, `json`, `ndjson`, `table` (alias for `pretty`)
 
 Default output format for `prune scan`.
@@ -431,53 +399,51 @@ Default output format for `prune scan`.
 **Default:** `safe`  
 **Accepted values:** `safe`, `likely_dead`, `review`
 
-The minimum confidence level for findings to be included in output. Findings below this threshold are filtered out.
+Minimum confidence threshold included in output.
 
 #### `report.include_evidence`
 
 **Type:** boolean  
 **Default:** `true`
 
-Reserved for future use. Currently accepted in the config schema but not used in output formatting.
+Reserved for future use. Accepted in schema but currently not used in output formatting.
 
 ---
 
 ### `ts_config`
 
-Configures module resolution for path aliases (e.g., `@/utils`, `~/components`). Mirrors TypeScript's `tsconfig.json` `paths` and `baseUrl` options.
+Configures path alias resolution (for example `@/utils`, `~/components`).
 
 #### `ts_config.enabled`
 
 **Type:** boolean  
 **Default:** `false`
 
-Enable or disable path alias resolution. When disabled (or not specified), all aliases are treated as external imports.
+Enable or disable path alias resolution.
 
 #### `ts_config.baseUrl`
 
 **Type:** string  
 **Default:** `"."`
 
-The base directory for resolving non-relative module paths. Corresponds to `compilerOptions.baseUrl` in TypeScript.
+Base directory used when resolving alias targets.
 
 #### `ts_config.paths`
 
 **Type:** map of string to list of strings  
 **Default:** `{}`
 
-A map of alias patterns to their resolved paths. Uses glob-like pattern matching where `*` matches any string.
+Alias mapping rules. The first mapped path is used during resolution.
 
 ```yaml
 ts_config:
   enabled: true
   baseUrl: .
   paths:
-    "@/*":        # @/utils/helper → src/utils/helper
+    "@/*":
       - src/*
-    "~/*":       # ~/components/Button → src/components/Button
+    "~/*":
       - src/components/*
     "@shared/*":
       - packages/shared/*
 ```
-
-The first path in each mapping list is used for resolution. If the resolved file is not found, the import is marked with `review` confidence.

@@ -4,7 +4,7 @@ description: Describes the available output formats — pretty (default), json, 
 icon: FileText
 ---
 
-Prune supports three primary output formats, selected via `--format` on the CLI or `report.format` in `prune.yaml`.
+Prune supports three output formats, selected via `--format` on the CLI or `report.format` in `prune.yaml`.
 
 ---
 
@@ -38,7 +38,7 @@ prune scan --format table  # alias for pretty
 **Example output:**
 
 ```bash
-Prune 0.3.0-beta.1 — 4 issues found in 340ms
+Prune v0.4.0-beta.1 — 4 issues found in 340ms
 
 ✔ SAFE (2)
 
@@ -48,7 +48,7 @@ Prune 0.3.0-beta.1 — 4 issues found in 340ms
   src/components/Button.tsx
   └─ unused export: OldButtonVariant
 
-⚠ LIKELY DEAD (1)
+✖ LIKELY DEAD (1)
 
   src/lib/helpers.ts
   └─ unused function: formatDeprecated
@@ -86,11 +86,11 @@ Done in 280ms
 **Output details:**
 
 - **Grouping**: Findings are grouped first by **Confidence Level** (`SAFE`, `LIKELY DEAD`, `REVIEW`) and then by **File Path**.
-- **Icons**: Uses `✔` for SAFE findings and `⚠` for LIKELY DEAD and REVIEW levels.
+- **Icons**: Uses `✔` for SAFE findings, `✖` for LIKELY DEAD, and `⚠` for REVIEW.
 - **Summary**: Provides an aggregated count of findings by type (Files, Exports, Functions, Dynamic) and by confidence level.
 - **Duration**: The total execution time is displayed at the top and bottom.
 
-The `pretty` format is designed for developer readability. For automation or large-scale data processing, use `json` or `ndjson`.
+The `pretty` format is designed for developer readability. For automation or large-scale processing, use `json` or `ndjson`.
 
 ---
 
@@ -234,7 +234,7 @@ prune scan --compact
 **Example output:**
 
 ```bash
-Prune 0.3.0-beta.1 — 4 issues found in 120ms
+Prune v0.4.0-beta.1 — 4 issues found in 120ms
 
 TYPE                 COUNT
 possible_dynamic_usage    1
