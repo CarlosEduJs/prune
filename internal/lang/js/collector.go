@@ -388,7 +388,9 @@ func detectDynamic(content string, cfg *config.Config) []string {
 		basePatterns = rule.Patterns
 	}
 
-	allPatterns := append(basePatterns, getHighRiskPatterns(cfg, "unused_function")...)
+	allPatterns := make([]string, 0, len(basePatterns)+10)
+	allPatterns = append(allPatterns, basePatterns...)
+	allPatterns = append(allPatterns, getHighRiskPatterns(cfg, "unused_function")...)
 	allPatterns = append(allPatterns, getHighRiskPatterns(cfg, "unused_export")...)
 	allPatterns = append(allPatterns, getHighRiskPatterns(cfg, "unused_variable")...)
 	allPatterns = uniqueStrings(allPatterns)
@@ -453,36 +455,6 @@ func classifyDynamicIndicators(indicators []string, cfg *config.Config, ruleKey 
 				break
 			}
 		}
-
-		if !di.IsHighRisk {
-			for _, safe := range safePatterns {
-				if strings.Contains(indicator, safe) {
-					di.SafeMatch = safe
-					break
-				}
-			}
-		}
-
-		result = append(result, di)
-	}
-
-	return result
-}
-
-func classifyDynamicFromContent(indicators []string, safePatterns []string) []DynamicIndicator {
-	highRiskPatterns := []string{"eval", "Function", "import("}
-	result := []DynamicIndicator{}
-	for _, indicator := range indicators {
-		di := DynamicIndicator{Pattern: indicator}
-
-		isHighRisk := false
-		for _, risk := range highRiskPatterns {
-			if strings.Contains(indicator, risk) {
-				isHighRisk = true
-				break
-			}
-		}
-		di.IsHighRisk = isHighRisk
 
 		if !di.IsHighRisk {
 			for _, safe := range safePatterns {
