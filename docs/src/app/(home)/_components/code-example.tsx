@@ -19,13 +19,22 @@ export default function CodeExample() {
         <CodeBlock 
           filename="prune.yaml" 
           lang="yaml"
-          code={`project:
+          code={`version: 2
+
+project:
   name: prune-docs
   language: js-ts
 
 scan:
-  paths: [src]
-  include: ["**/*.ts", "**/*.tsx"]
+  paths:
+    - src
+  include:
+    - "**/*.ts"
+    - "**/*.tsx"
+  stream:
+    enabled: false
+    interval_ms: 250
+    batch_size: 50
 
 entrypoints:
   files:
@@ -33,9 +42,12 @@ entrypoints:
     - src/api/server.ts
 
 rules:
-  unused_export: enabled
-  unused_function: enabled
-  orphaned_file: enabled`}
+  unused_export:
+    enabled: true
+  unused_function:
+    enabled: true
+  unused_file:
+    enabled: true`}
         />
         
         <p className="text-base sm:text-lg text-muted-foreground mt-8 flex items-center gap-2">

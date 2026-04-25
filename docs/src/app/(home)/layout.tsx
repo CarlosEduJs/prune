@@ -76,11 +76,11 @@ const jsonLd = {
   '@type': 'SoftwareApplication',
   name: 'Prune',
   description:
-    'A static analysis CLI tool that identifies dead code — unreachable files, unused exports, undeclared functions and variables — in JavaScript and TypeScript projects using Tree-sitter AST parsing.',
+    'A static analysis CLI tool that identifies dead code — unreachable files, unused exports, unused functions, and unused variables — in JavaScript and TypeScript projects using Tree-sitter AST parsing.',
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Linux, macOS, Windows',
   url: BASE_URL,
-  softwareVersion: '0.3.0-beta.1',
+  softwareVersion: '0.4.0-beta.1',
   license: 'https://opensource.org/licenses/MIT',
   author: {
     '@type': 'Person',
@@ -109,4 +109,3 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </>
   );
 }
-
