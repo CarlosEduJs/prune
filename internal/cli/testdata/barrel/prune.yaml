@@ -1,0 +1,21 @@
+version: 2
+
+project:
+  name: barrel-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/consumer.ts
+
+rules:
+  unused_export:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

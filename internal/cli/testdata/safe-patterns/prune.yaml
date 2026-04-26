@@ -1,0 +1,23 @@
+version: 2
+
+project:
+  name: safe-patterns-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_function:
+    enabled: true
+  unused_variable:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

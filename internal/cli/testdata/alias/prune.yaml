@@ -1,0 +1,28 @@
+version: 2
+
+project:
+  name: alias-test
+  language: js-ts
+
+ts_config:
+  enabled: true
+  baseUrl: src
+  paths:
+    "@utils/*":
+      - utils/*
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

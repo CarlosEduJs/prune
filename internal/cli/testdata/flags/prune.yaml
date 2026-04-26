@@ -1,0 +1,27 @@
+version: 2
+
+project:
+  name: flags-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_function:
+    enabled: true
+  unused_variable:
+    enabled: true
+  unused_export:
+    enabled: true
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe
