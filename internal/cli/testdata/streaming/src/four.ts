@@ -1,0 +1,1 @@
+export function four() { return 4; }

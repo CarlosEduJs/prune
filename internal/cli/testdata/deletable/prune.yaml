@@ -1,0 +1,21 @@
+version: 2
+
+project:
+  name: deletable-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/main.ts
+
+rules:
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

@@ -1,0 +1,21 @@
+version: 2
+
+project:
+  name: entry-default-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/main.ts
+
+rules:
+  unused_export:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

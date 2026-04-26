@@ -1,0 +1,25 @@
+version: 2
+
+project:
+  name: compact-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_file:
+    enabled: true
+  unused_function:
+    enabled: true
+  unused_export:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

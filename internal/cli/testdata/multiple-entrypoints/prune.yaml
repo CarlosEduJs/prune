@@ -1,0 +1,24 @@
+version: 2
+
+project:
+  name: multiple-entrypoints-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/main.ts
+    - src/admin.ts
+
+rules:
+  unused_export:
+    enabled: true
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

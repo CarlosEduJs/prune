@@ -1,0 +1,23 @@
+version: 2
+
+project:
+  name: reexports-test
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/consumer.ts
+
+rules:
+  unused_export:
+    enabled: true
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe
