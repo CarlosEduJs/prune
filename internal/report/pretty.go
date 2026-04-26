@@ -91,14 +91,20 @@ func (f prettyFormatter) Format(findings []rules.Finding) ([]byte, error) { //no
 		return []byte(b.String()), nil
 	}
 
-	b.WriteString(f.header(len(findings), useColor))
+	grouped := groupByConfidence(findings)
+	groupedCount := 0
+	for _, fileGroups := range grouped {
+		for _, ff := range fileGroups {
+			groupedCount += len(ff)
+		}
+	}
+
+	b.WriteString(f.header(groupedCount, useColor))
 	b.WriteString("\n")
 	if f.opts.Compact {
 		b.WriteString(f.summary(findings, useColor))
 		return []byte(b.String()), nil
 	}
-
-	grouped := groupByConfidence(findings)
 
 	for _, confidence := range orderedConfidenceKeysFromGroups(grouped) {
 		fileGroups, ok := grouped[confidence]

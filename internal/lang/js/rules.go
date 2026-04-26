@@ -84,7 +84,10 @@ func ruleUnusedExports(cfg *config.Config, data *Collected) []rules.Finding {
 			if usedExports[targetFile] == nil {
 				usedExports[targetFile] = map[string]bool{}
 			}
-			if spec.Wildcard || spec.SideEffect {
+			if spec.SideEffect {
+				continue
+			}
+			if spec.Wildcard {
 				usedExports[targetFile]["*"] = true
 				continue
 			}
