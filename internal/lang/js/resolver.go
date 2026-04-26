@@ -130,17 +130,21 @@ func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
 		}
 	}
 
-	targets := r.aliasPaths[bestAlias]
+targets := r.aliasPaths[bestAlias]
 	if len(targets) == 0 {
 		return ResolvedImport{
 			Type:       ImportTypeAlias,
 			Original:   source,
-			Resolved:   "",
+			Resolved:  "",
 			Confidence: "review",
 		}
 	}
 
-	mapping := targets[0]
+	baseURL := r.baseURL
+	if baseURL == "." {
+		baseURL = ""
+	}
+
 	suffix := ""
 	if strings.HasSuffix(bestAlias, "/*") {
 		prefix := strings.TrimSuffix(bestAlias, "/*")
@@ -148,19 +152,17 @@ func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
 		suffix = strings.TrimPrefix(suffix, "/")
 	}
 
-	mappingBase := strings.TrimSuffix(mapping, "/*")
-	baseURL := r.baseURL
-	if baseURL == "." {
-		baseURL = ""
-	}
-	resolvedPath := filepath.ToSlash(filepath.Clean(filepath.Join(baseURL, mappingBase, suffix)))
+	for _, mapping := range targets {
+		mappingBase := strings.TrimSuffix(mapping, "/*")
+		resolvedPath := filepath.ToSlash(filepath.Clean(filepath.Join(baseURL, mappingBase, suffix)))
 
-	if target, ok := r.resolveFile(resolvedPath); ok {
-		return ResolvedImport{
-			Type:       ImportTypeAlias,
-			Original:   source,
-			Resolved:   target,
-			Confidence: "safe",
+		if target, ok := r.resolveFile(resolvedPath); ok {
+			return ResolvedImport{
+				Type:       ImportTypeAlias,
+				Original:   source,
+				Resolved:   target,
+				Confidence: "safe",
+			}
 		}
 	}
 
