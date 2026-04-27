@@ -1,0 +1,21 @@
+version: 2
+
+project:
+  name: crash-empty
+  language: js-ts
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe
