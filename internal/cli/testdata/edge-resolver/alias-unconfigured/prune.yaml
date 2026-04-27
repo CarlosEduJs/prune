@@ -1,0 +1,23 @@
+version: 2
+
+project:
+  name: edge-alias-unconfigured
+  language: js-ts
+
+# ts_config NOT enabled (default: false)
+
+scan:
+  paths:
+    - src
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe

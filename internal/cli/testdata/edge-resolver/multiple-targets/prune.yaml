@@ -1,0 +1,30 @@
+version: 2
+
+project:
+  name: edge-multiple-targets
+  language: js-ts
+
+ts_config:
+  enabled: true
+  baseUrl: .
+  paths:
+    "@lib":
+      - src/lib
+      - packages/lib
+
+scan:
+  paths:
+    - src
+    - packages
+
+entrypoints:
+  files:
+    - src/index.ts
+
+rules:
+  unused_file:
+    enabled: true
+
+report:
+  format: table
+  min_confidence: safe
