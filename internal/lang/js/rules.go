@@ -37,6 +37,25 @@ func ruleUnusedFiles(cfg *config.Config, data *Collected) []rules.Finding {
 		}
 	}
 
+	unresolvedImportTargets := map[string]bool{}
+	for _, specs := range data.ImportSpecs {
+		for _, spec := range specs {
+			if spec.Confidence == "review" && spec.Resolved == "" {
+				target := extractPotentialTarget(spec.Source)
+				if target != "" {
+					// Try multiple path variations
+					unresolvedImportTargets[target] = true
+					unresolvedImportTargets["src/"+target] = true
+					// Also try with common extensions
+					unresolvedImportTargets[target+".ts"] = true
+					unresolvedImportTargets[target+".tsx"] = true
+					unresolvedImportTargets["src/"+target+".ts"] = true
+				}
+			}
+		}
+	}
+	_ = unresolvedImportTargets
+
 	findings := []rules.Finding{}
 	for _, entry := range data.Files {
 		if entrypoints[entry.Rel] {
@@ -49,6 +68,9 @@ func ruleUnusedFiles(cfg *config.Config, data *Collected) []rules.Finding {
 			continue
 		}
 		confidence := confidenceFor(cfg, "unused_file", "default", "safe")
+		if unresolvedImportTargets[entry.Rel] {
+			confidence = "review"
+		}
 		findings = append(findings, rules.Finding{
 			ID:         "unused_file:" + entry.Rel,
 			Kind:       "unused_file",
@@ -452,4 +474,14 @@ func exportLineMap(symbols []ExportSymbol) map[string]int {
 		}
 	}
 	return lineMap
+}
+
+func extractPotentialTarget(source string) string {
+	if strings.HasPrefix(source, "@/") {
+		return strings.TrimPrefix(source, "@/")
+	}
+	if strings.HasPrefix(source, "~") {
+		return strings.TrimPrefix(source, "~")
+	}
+	return ""
 }

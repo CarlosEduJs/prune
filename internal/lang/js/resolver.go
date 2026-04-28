@@ -111,7 +111,7 @@ func (r *Resolver) resolveRelative(source, fromFile string) ResolvedImport {
 }
 
 func (r *Resolver) resolveAlias(source, fromFile string) ResolvedImport {
-	if r.aliasPaths == nil {
+	if len(r.aliasPaths) == 0 {
 		return ResolvedImport{
 			Type:       ImportTypeAlias,
 			Original:   source,
