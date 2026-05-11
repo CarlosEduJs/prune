@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"prune/internal/config"
 	"prune/internal/rules"
 	"prune/internal/scan"
@@ -18,20 +19,20 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 	}
 
 	stream := cfg.Scan.Stream
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	entries, err := scan.CollectWithContext(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	collector := NewCollector(cfg)
-	var lastCollected *Collected
-	emitted := map[string]bool{}
-
 	entriesCh := make(chan []scan.FileEntry, 1)
-	errCh := make(chan error, 1)
+	resultsCh := make(chan []rules.Finding, 1)
 
-	go func() {
+	group, groupCtx := errgroup.WithContext(ctx)
+
+	group.Go(func() error {
 		defer close(entriesCh)
 		batch := []scan.FileEntry{}
 		lastEmit := time.Now()
@@ -39,9 +40,8 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 
 		for _, entry := range entries {
 			select {
-			case <-ctx.Done():
-				errCh <- ctx.Err()
-				return
+			case <-groupCtx.Done():
+				return groupCtx.Err()
 			default:
 			}
 
@@ -52,53 +52,80 @@ func AnalyzeStreaming(ctx context.Context, cfg *config.Config, handler StreamHan
 				batchSize = stream.BatchSize
 			}
 			if len(batch) >= batchSize || time.Since(lastEmit) >= interval {
-				entriesCh <- batch
+				select {
+				case <-groupCtx.Done():
+					return groupCtx.Err()
+				case entriesCh <- batch:
+				}
 				batch = []scan.FileEntry{}
 				lastEmit = time.Now()
 			}
 		}
 
 		if len(batch) > 0 {
-			entriesCh <- batch
-		}
-	}()
-
-	processed := 0
-	for batch := range entriesCh {
-		select {
-		case err := <-errCh:
-			return nil, err
-		default:
+			select {
+			case <-groupCtx.Done():
+				return groupCtx.Err()
+			case entriesCh <- batch:
+			}
 		}
 
-		collected, err := collector.Collect(ctx, batch)
-		if err != nil {
-			return nil, err
-		}
-		lastCollected = collected
-		findings := applyRules(cfg, collected)
-		processed += len(batch)
+		return nil
+	})
 
-		if stream.Enabled && stream.IntervalMs > 0 && handler != nil {
-			newFindings := make([]rules.Finding, 0, len(findings))
-			for _, finding := range findings {
-				if emitted[finding.ID] {
-					continue
+	group.Go(func() error {
+		collector := NewCollector(cfg)
+		var lastCollected *Collected
+		emitted := map[string]bool{}
+
+		for {
+			select {
+			case <-groupCtx.Done():
+				return groupCtx.Err()
+			case batch, ok := <-entriesCh:
+				if !ok {
+					if lastCollected == nil {
+						resultsCh <- nil
+						return nil
+					}
+					resultsCh <- applyRules(cfg, lastCollected)
+					return nil
 				}
-				emitted[finding.ID] = true
-				newFindings = append(newFindings, finding)
-			}
-			if len(newFindings) == 0 {
-				continue
-			}
-			if err := handler(newFindings); err != nil {
-				return nil, err
+				collected, err := collector.Collect(groupCtx, batch)
+				if err != nil {
+					return err
+				}
+				lastCollected = collected
+				findings := applyRules(cfg, collected)
+
+				if stream.Enabled && stream.IntervalMs > 0 && handler != nil {
+					newFindings := make([]rules.Finding, 0, len(findings))
+					for _, finding := range findings {
+						if emitted[finding.ID] {
+							continue
+						}
+						emitted[finding.ID] = true
+						newFindings = append(newFindings, finding)
+					}
+					if len(newFindings) == 0 {
+						continue
+					}
+					if err := handler(newFindings); err != nil {
+						return err
+					}
+				}
 			}
 		}
+	})
+
+	if err := group.Wait(); err != nil {
+		return nil, err
 	}
 
-	if lastCollected == nil {
+	select {
+	case result := <-resultsCh:
+		return result, nil
+	default:
 		return nil, nil
 	}
-	return applyRules(cfg, lastCollected), nil
 }
