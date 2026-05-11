@@ -12,7 +12,7 @@ build:
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BIN_DIR)
 	go build \
-		-ldflags "-s -w -X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.Date=$(DATE)" \
+		-ldflags "-s -w -X prune/internal/version.Version=$(VERSION) -X prune/internal/version.Commit=$(COMMIT) -X prune/internal/version.Date=$(DATE)" \
 		-o $(BIN_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Binary created at $(BIN_DIR)/$(BINARY_NAME)"
 
