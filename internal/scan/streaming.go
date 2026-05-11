@@ -38,7 +38,7 @@ func (s *StreamingProcessor) ShouldEmit() bool {
 		return false
 	}
 	elapsed := time.Since(s.lastEmit)
-	return elapsed >= time.Duration(s.cfg.IntervalMs)*time.Millisecond
+	return elapsed >= time.Duration(s.interval)*time.Millisecond
 }
 
 func (s *StreamingProcessor) EmitBatch(entries []FileEntry) error {
